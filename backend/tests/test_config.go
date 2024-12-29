@@ -63,6 +63,8 @@ func SetupTestDB() (*gorm.DB, func()) {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+
+	dbName := "test_" + os.Getenv("DB_NAME")
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/?charset=utf8mb4&parseTime=True&loc=Local",
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_PASSWORD"),
@@ -75,15 +77,15 @@ func SetupTestDB() (*gorm.DB, func()) {
 		log.Fatal("Failed to connect to MySQL server:", err)
 	}
 
-	db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", os.Getenv("DB_NAME")))
+	db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", dbName))
 
 	// 创建测试数据库
-	if err := db.Exec(fmt.Sprintf("CREATE DATABASE %s", os.Getenv("DB_NAME"))).Error; err != nil {
+	if err := db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName)).Error; err != nil {
 		log.Fatal("Failed to create test database:", err)
 	}
 
 	// 切换到测试数据库
-	if err := db.Exec(fmt.Sprintf("USE %s", os.Getenv("DB_NAME"))).Error; err != nil {
+	if err := db.Exec(fmt.Sprintf("USE %s", dbName)).Error; err != nil {
 		log.Fatal("Failed to switch to test database:", err)
 	}
 
@@ -113,7 +115,7 @@ func SetupTestDB() (*gorm.DB, func()) {
 			log.Printf("Failed to connect for cleanup: %v", err)
 			return
 		}
-		if err := cleanupDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", os.Getenv("DB_NAME"))).Error; err != nil {
+		if err := cleanupDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", dbName)).Error; err != nil {
 			log.Printf("Failed to drop test database: %v", err)
 		}
 	}
