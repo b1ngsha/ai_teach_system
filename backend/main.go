@@ -6,6 +6,8 @@ import (
 	"ai_teach_system/utils"
 	"log"
 
+	"ai_teach_system/services"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,6 +24,11 @@ func main() {
 		log.Fatal("获取数据库实例失败：", err)
 	}
 	defer sqlDB.Close()
+
+	// 初始化定时任务服务
+	schedulerService := services.NewSchedulerService(db, services.NewLeetCodeService())
+	schedulerService.Start()
+	defer schedulerService.Stop()
 
 	// 创建 Gin 引擎
 	r := gin.Default()

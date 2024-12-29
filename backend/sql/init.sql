@@ -56,4 +56,20 @@ CREATE TABLE IF NOT EXISTS problem_knowledge_points (
     PRIMARY KEY (problem_id, knowledge_point_id),
     FOREIGN KEY (problem_id) REFERENCES problems(id) ON DELETE CASCADE,
     FOREIGN KEY (knowledge_point_id) REFERENCES knowledge_points(id) ON DELETE CASCADE
-); 
+);
+
+-- 添加任务记录表
+CREATE TABLE IF NOT EXISTS task_records (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    task_type VARCHAR(50) NOT NULL,
+    status ENUM('pending', 'running', 'completed', 'failed') NOT NULL,
+    start_time DATETIME(3),
+    end_time DATETIME(3),
+    total_count INT DEFAULT 0,
+    success_count INT DEFAULT 0,
+    error_message TEXT,
+    created_at DATETIME(3),
+    updated_at DATETIME(3),
+    deleted_at DATETIME(3),
+    INDEX idx_task_records_deleted_at (deleted_at)
+);

@@ -1,2 +1,5 @@
-.vscode
-.env
+# IDE
+.vscode/
+
+# Environment variables
+backend/.env
