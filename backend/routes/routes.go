@@ -17,4 +17,11 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	{
 		leetcode.GET("/problems/:id", leetcodeController.GetProblem)
 	}
+
+	// AI 相关路由
+	aiController := controllers.NewAIController()
+	ai := api.Group("/ai")
+	{
+		ai.POST("/generate_code", aiController.GenerateCode)
+	}
 }
