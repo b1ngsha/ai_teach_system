@@ -1,6 +1,7 @@
 package services
 
 import (
+	"ai_teach_system/constants"
 	"ai_teach_system/models"
 	"fmt"
 	"log"
@@ -10,7 +11,7 @@ import (
 )
 
 type LeetCodeService struct {
-	client *resty.Client
+	Client *resty.Client
 }
 
 type GraphQLQuery struct {
@@ -21,11 +22,11 @@ type GraphQLQuery struct {
 
 func NewLeetCodeService() *LeetCodeService {
 	client := resty.New().
-		SetBaseURL("https://leetcode.cn").
+		SetBaseURL(constants.LeetCodeHost).
 		SetHeader("Content-Type", "application/json")
 
 	return &LeetCodeService{
-		client: client,
+		Client: client,
 	}
 }
 
@@ -80,7 +81,7 @@ func (s *LeetCodeService) FetchAllProblems() ([]*models.Problem, error) {
 		}
 
 		var result map[string]interface{}
-		_, err := s.client.R().
+		_, err := s.Client.R().
 			SetBody(graphqlQuery).
 			SetResult(&result).
 			Post("/graphql")
@@ -147,7 +148,7 @@ func (s *LeetCodeService) FetchProblemDetail(titleSlug string) (*models.Problem,
 	}
 
 	var result map[string]interface{}
-	_, err := s.client.R().
+	_, err := s.Client.R().
 		SetBody(graphqlQuery).
 		SetResult(&result).
 		Post("/graphql")

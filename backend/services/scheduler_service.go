@@ -25,7 +25,7 @@ func NewSchedulerService(db *gorm.DB, leetcodeService *LeetCodeService) *Schedul
 
 func (s *SchedulerService) Start() {
 	// 每天0点执行
-	_, err := s.cron.AddFunc("0 0 0 * * *", s.syncLeetCodeProblems)
+	_, err := s.cron.AddFunc("0 0 0 * * *", s.SyncLeetCodeProblems)
 	if err != nil {
 		log.Printf("添加定时任务失败: %v", err)
 		return
@@ -37,7 +37,7 @@ func (s *SchedulerService) Stop() {
 	s.cron.Stop()
 }
 
-func (s *SchedulerService) syncLeetCodeProblems() {
+func (s *SchedulerService) SyncLeetCodeProblems() {
 	// 创建任务记录
 	now := time.Now()
 	taskRecord := &models.TaskRecord{
