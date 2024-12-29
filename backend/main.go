@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log"
 	"ai_teach_system/config"
 	"ai_teach_system/routes"
 	"ai_teach_system/utils"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,7 +27,7 @@ func main() {
 	r := gin.Default()
 
 	// 设置路由
-	routes.SetupRoutes(r)
+	routes.SetupRoutes(r, db)
 
 	// 启动服务器
 	if err := r.Run(":8080"); err != nil {
