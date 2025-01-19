@@ -15,10 +15,13 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	api.Use(AuthMiddleware())
 	{
 		// LeetCode 相关路由
-		leetcodeController := controllers.NewLeetCodeController(db)
+		leetcodeService := services.NewLeetCodeService()
+		leetcodeController := controllers.NewLeetCodeController(db, leetcodeService)
 		leetcode := api.Group("/leetcode")
 		{
 			leetcode.GET("/problems/:id", leetcodeController.GetProblem)
+			leetcode.POST("/interpret_solution", leetcodeController.RunTestCase)
+			leetcode.POST("/submit", leetcodeController.Submit)
 		}
 
 		// AI 相关路由

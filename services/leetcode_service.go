@@ -12,6 +12,8 @@ import (
 
 type LeetCodeServiceInterface interface {
 	FetchAllProblems() ([]*models.Problem, error)
+	RunTestCase(titleSlug string, questionId string, code string, testCase string, lang string) (map[string]interface{}, error)
+	Submit(titleSlug string, lang string, question_id string, code string) (map[string]interface{}, error)
 }
 
 type LeetCodeService struct {
@@ -189,4 +191,48 @@ func (s *LeetCodeService) FetchProblemDetail(titleSlug string) (*models.Problem,
 	}
 
 	return problem, nil
+}
+
+func (s *LeetCodeService) RunTestCase(titleSlug string, questionId string, code string, testCase string, lang string) (map[string]interface{}, error) {
+	body := &map[string]string{
+		"data_input":  testCase,
+		"lang":        lang,
+		"question_id": questionId,
+		"typed_code":  code,
+	}
+
+	var result map[string]interface{}
+	path := fmt.Sprintf("/problems/%s/interpret_solution", titleSlug)
+	_, err := s.Client.R().
+		SetBody(body).
+		SetResult(&result).
+		Post(path)
+
+	if err != nil {
+		return nil, err
+	}
+
+	data := result["data"].(map[string]interface{})
+	return data, nil
+}
+
+func (s *LeetCodeService) Submit(titleSlug string, lang string, question_id string, code string) (map[string]interface{}, error) {
+	body := &map[string]string{
+		"lang":        lang,
+		"question_id": question_id,
+		"typed_code":  code,
+	}
+	var result map[string]interface{}
+	path := fmt.Sprintf("/problems/%s/submit/", titleSlug)
+	_, err := s.Client.R().
+		SetBody(body).
+		SetResult(&result).
+		Post(path)
+
+	if err != nil {
+		return nil, err
+	}
+
+	data := result["data"].(map[string]interface{})
+	return data, nil
 }
