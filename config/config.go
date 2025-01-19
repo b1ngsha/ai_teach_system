@@ -7,7 +7,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type Config struct {
+type DBConfig struct {
 	DBHost     string
 	DBPort     string
 	DBUser     string
@@ -15,7 +15,12 @@ type Config struct {
 	DBName     string
 }
 
-var AppConfig Config
+type JWTConfig struct {
+	SecretKey string
+}
+
+var DB DBConfig
+var JWT JWTConfig
 
 func LoadConfig() {
 	// 加载 .env 文件
@@ -24,12 +29,16 @@ func LoadConfig() {
 		log.Fatal("Error loading .env file")
 	}
 
-	AppConfig = Config{
+	DB = DBConfig{
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "3306"),
 		DBUser:     getEnv("DB_USER", "root"),
 		DBPassword: getEnv("DB_PASSWORD", ""),
 		DBName:     getEnv("DB_NAME", "mydb"),
+	}
+
+	JWT = JWTConfig{
+		SecretKey: getEnv("JWT_SECRET_KEY", ""),
 	}
 }
 

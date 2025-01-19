@@ -1,11 +1,7 @@
 package models
 
-import (
-	"gorm.io/gorm"
-)
-
 type Problem struct {
-	gorm.Model
+	ID              uint             `gorm:"primarykey"`
 	LeetcodeID      int              `json:"leetcode_id" gorm:"unique;not null"`
 	Title           string           `json:"title" gorm:"not null"`
 	TitleSlug       string           `json:"title_slug" gorm:"not null"`
@@ -17,13 +13,13 @@ type Problem struct {
 }
 
 type Tag struct {
-	gorm.Model
+	ID       uint      `gorm:"primarykey"`
 	Name     string    `json:"name" gorm:"unique"`
 	Problems []Problem `json:"problems" gorm:"many2many:problem_tags;"`
 }
 
 type KnowledgePoint struct {
-	gorm.Model
+	ID          uint      `gorm:"primarykey"`
 	Name        string    `json:"name" gorm:"unique"`
 	Description string    `json:"description"`
 	Problems    []Problem `json:"problems" gorm:"many2many:problem_knowledge_points;"`
