@@ -10,6 +10,10 @@ import (
 	"github.com/openai/openai-go/option"
 )
 
+type AIServiceInterface interface {
+	GenerateCode(req *CodeGenerationRequest) (string, error)
+}
+
 type AIService struct {
 	client *openai.Client
 }

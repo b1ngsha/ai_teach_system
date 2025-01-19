@@ -12,10 +12,10 @@ type TasksManager struct {
 	db   *gorm.DB
 	cron *cron.Cron
 
-	leetcodeService *services.LeetCodeService
+	leetcodeService services.LeetCodeServiceInterface
 }
 
-func NewTasksManager(db *gorm.DB, s *services.LeetCodeService) *TasksManager {
+func NewTasksManager(db *gorm.DB, s services.LeetCodeServiceInterface) *TasksManager {
 	return &TasksManager{
 		db:              db,
 		cron:            cron.New(cron.WithSeconds()),

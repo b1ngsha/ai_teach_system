@@ -20,7 +20,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	}
 
 	// AI 相关路由
-	aiController := controllers.NewAIController()
+	aiService := services.NewAIService()
+	aiController := controllers.NewAIController(aiService)
 	ai := api.Group("/ai")
 	{
 		ai.POST("/generate_code", aiController.GenerateCode)

@@ -2,61 +2,14 @@ package tests
 
 import (
 	"ai_teach_system/models"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
-	"net/http/httptest"
 	"os"
 
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
-
-func SetupTestLeetCodeServer() *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 返回模拟的 GraphQL 响应
-		req, _ := io.ReadAll(r.Body)
-		var reqJson map[string]interface{}
-		json.Unmarshal(req, &reqJson)
-		w.Header().Set("Content-Type", "application/json")
-		if reqJson["operationName"] == "problemsetQuestionList" {
-			w.Write([]byte(`{
-				"data": {
-					"problemsetQuestionList": {
-						"hasMore": false,
-						"questions": [
-							{
-								"titleSlug": "two-sum",
-								"title": "Two Sum",
-								"difficulty": "Easy",
-								"topicTags": [
-									{"name": "Array"},
-									{"name": "Hash Table"}
-								]
-							}
-						]
-					}
-				}
-			}`))
-		} else if reqJson["operationName"] == "questionData" {
-			w.Write([]byte(`{
-				"data": {
-					"question": {
-						"questionId": "1",
-						"title": "Two Sum",
-						"titleSlug": "two-sum",
-						"difficulty": "Easy",
-						"content": "Given an array of integers...",
-						"sampleTestCase": "[2,7,11,15]\n9"
-					}
-				}
-			}`))
-		}
-	}))
-}
 
 func SetupTestDB() (*gorm.DB, func()) {
 	err := godotenv.Load("../../.env")

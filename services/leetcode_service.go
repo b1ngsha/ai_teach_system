@@ -10,6 +10,10 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
+type LeetCodeServiceInterface interface {
+	FetchAllProblems() ([]*models.Problem, error)
+}
+
 type LeetCodeService struct {
 	Client *resty.Client
 }

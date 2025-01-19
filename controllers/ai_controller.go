@@ -8,12 +8,12 @@ import (
 )
 
 type AIController struct {
-	service *services.AIService
+	Service services.AIServiceInterface
 }
 
-func NewAIController() *AIController {
+func NewAIController(service services.AIServiceInterface) *AIController {
 	return &AIController{
-		service: services.NewAIService(),
+		Service: service,
 	}
 }
 
@@ -31,7 +31,7 @@ func (c *AIController) GenerateCode(ctx *gin.Context) {
 		return
 	}
 
-	code, err := c.service.GenerateCode(&services.CodeGenerationRequest{
+	code, err := c.Service.GenerateCode(&services.CodeGenerationRequest{
 		Title:           req.Title,
 		Language:        req.Language,
 		Content:         req.Content,
