@@ -3,6 +3,7 @@ package main
 import (
 	"ai_teach_system/config"
 	"ai_teach_system/routes"
+	"ai_teach_system/services"
 	"ai_teach_system/tasks"
 	"ai_teach_system/utils"
 	"log"
@@ -25,9 +26,9 @@ func main() {
 	defer sqlDB.Close()
 
 	// 初始化定时任务服务
-	schedulerService := tasks.NewTasksManager(db)
-	schedulerService.Start()
-	defer schedulerService.Stop()
+	tasksManager := tasks.NewTasksManager(db, services.NewLeetCodeService())
+	tasksManager.Start()
+	defer tasksManager.Stop()
 
 	// 创建 Gin 引擎
 	r := gin.Default()

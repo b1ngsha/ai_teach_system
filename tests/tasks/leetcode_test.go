@@ -20,13 +20,13 @@ func TestSchedulerService_syncLeetCodeProblems(t *testing.T) {
 
 	leetcodeService := services.NewLeetCodeService()
 	leetcodeService.Client.SetBaseURL(server.URL)
-	manager := tasks.NewTasksManager(db)
+	manager := tasks.NewTasksManager(db, leetcodeService)
 
 	// 执行同步
 	manager.SyncLeetCodeProblems()
 
 	// 等待异步任务完成
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second)
 
 	// 验证任务记录
 	var taskRecord models.TaskRecord

@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"ai_teach_system/models"
-	"ai_teach_system/services"
 	"log"
 	"time"
 
@@ -33,7 +32,7 @@ func (tm *TasksManager) SyncLeetCodeProblems() {
 			tm.db.Save(taskRecord)
 		}()
 
-		problems, err := services.NewLeetCodeService().FetchAllProblems()
+		problems, err := tm.leetcodeService.FetchAllProblems()
 		if err != nil {
 			taskRecord.Status = models.TaskStatusFailed
 			taskRecord.ErrorMessage = err.Error()

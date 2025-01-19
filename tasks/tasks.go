@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"ai_teach_system/services"
 	"log"
 
 	"github.com/robfig/cron/v3"
@@ -10,12 +11,15 @@ import (
 type TasksManager struct {
 	db   *gorm.DB
 	cron *cron.Cron
+
+	leetcodeService *services.LeetCodeService
 }
 
-func NewTasksManager(db *gorm.DB) *TasksManager {
+func NewTasksManager(db *gorm.DB, s *services.LeetCodeService) *TasksManager {
 	return &TasksManager{
-		db:   db,
-		cron: cron.New(cron.WithSeconds()),
+		db:              db,
+		cron:            cron.New(cron.WithSeconds()),
+		leetcodeService: s,
 	}
 }
 
