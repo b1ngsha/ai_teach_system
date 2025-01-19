@@ -3,6 +3,7 @@ package services_test
 import (
 	"ai_teach_system/models"
 	"ai_teach_system/services"
+	"ai_teach_system/tasks"
 	"ai_teach_system/tests"
 	"testing"
 	"time"
@@ -19,13 +20,13 @@ func TestSchedulerService_syncLeetCodeProblems(t *testing.T) {
 
 	leetcodeService := services.NewLeetCodeService()
 	leetcodeService.Client.SetBaseURL(server.URL)
-	scheduler := services.NewSchedulerService(db, leetcodeService)
+	manager := tasks.NewTasksManager(db)
 
 	// 执行同步
-	scheduler.SyncLeetCodeProblems()
+	manager.SyncLeetCodeProblems()
 
 	// 等待异步任务完成
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 3)
 
 	// 验证任务记录
 	var taskRecord models.TaskRecord

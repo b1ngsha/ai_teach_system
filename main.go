@@ -3,10 +3,9 @@ package main
 import (
 	"ai_teach_system/config"
 	"ai_teach_system/routes"
+	"ai_teach_system/tasks"
 	"ai_teach_system/utils"
 	"log"
-
-	"ai_teach_system/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,7 +25,7 @@ func main() {
 	defer sqlDB.Close()
 
 	// 初始化定时任务服务
-	schedulerService := services.NewSchedulerService(db, services.NewLeetCodeService())
+	schedulerService := tasks.NewTasksManager(db)
 	schedulerService.Start()
 	defer schedulerService.Stop()
 
