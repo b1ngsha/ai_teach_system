@@ -2,4 +2,4 @@
 .vscode/
 
 # Environment variables
-backend/.env
+.env
