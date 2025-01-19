@@ -9,22 +9,25 @@ import (
 )
 
 func SetupRoutes(r *gin.Engine, db *gorm.DB) {
-	// API 路由组
 	api := r.Group("/api")
 
-	// LeetCode 相关路由
-	leetcodeController := controllers.NewLeetCodeController(db)
-	leetcode := api.Group("/leetcode")
+	// 需要鉴权的路由
+	api.Use(AuthMiddleware())
 	{
-		leetcode.GET("/problems/:id", leetcodeController.GetProblem)
-	}
+		// LeetCode 相关路由
+		leetcodeController := controllers.NewLeetCodeController(db)
+		leetcode := api.Group("/leetcode")
+		{
+			leetcode.GET("/problems/:id", leetcodeController.GetProblem)
+		}
 
-	// AI 相关路由
-	aiService := services.NewAIService()
-	aiController := controllers.NewAIController(aiService)
-	ai := api.Group("/ai")
-	{
-		ai.POST("/generate_code", aiController.GenerateCode)
+		// AI 相关路由
+		aiService := services.NewAIService()
+		aiController := controllers.NewAIController(aiService)
+		ai := api.Group("/ai")
+		{
+			ai.POST("/generate_code", aiController.GenerateCode)
+		}
 	}
 
 	// 用户相关路由
