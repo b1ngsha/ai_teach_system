@@ -90,14 +90,13 @@ func (c *UserController) Register(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.userService.Register(req.Username, req.Password, req.Name, req.StudentID, req.Class, avatarURL); err != nil {
+	user, err := c.userService.Register(req.Username, req.Password, req.Name, req.StudentID, req.Class, avatarURL)
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, utils.Success(gin.H{
-		"message": "注册成功",
-	}))
+	ctx.JSON(http.StatusCreated, utils.Success(user))
 }
 
 func (c *UserController) GetUserInfo(ctx *gin.Context) {

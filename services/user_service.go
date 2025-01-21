@@ -47,11 +47,11 @@ func (s *UserService) Login(studentID string, password string) (string, error) {
 	return tokenString, nil
 }
 
-func (s *UserService) Register(username string, password string, name string, studentId string, class string, avatar string) error {
+func (s *UserService) Register(username string, password string, name string, studentId string, class string, avatar string) (*models.User, error) {
 	var count int64
-	s.db.Model(&models.User{}).Where("username = ?", username).Or("student_id = ?", studentId).Count(&count)
+	s.db.Model(&models.User{}).Where("username = ?", username).Or("student_id = ?", studentId).Or("name = ?", name).Count(&count)
 	if count > 0 {
-		return errors.New("用户已存在")
+		return nil, errors.New("用户已存在")
 	}
 
 	user := models.User{
@@ -63,7 +63,11 @@ func (s *UserService) Register(username string, password string, name string, st
 		Avatar:    avatar,
 	}
 
-	return s.db.Create(&user).Error
+	if err := s.db.Create(&user).Error; err != nil {
+		return nil, errors.New("创建用户失败")
+	}
+
+	return &user, nil
 }
 
 func (s *UserService) GetUserInfo(userID uint) (map[string]interface{}, error) {
