@@ -75,6 +75,10 @@ func (s *UserService) GetUserInfo(userID uint) (map[string]interface{}, error) {
 	var totalProblems int64
 	s.db.Model(&models.Problem{}).Count(&totalProblems)
 
+	if totalProblems == 0 {
+		return nil, errors.New("当前系统中题库为空，请先同步题目数据")
+	}
+
 	var solvedProblems int64
 	s.db.Model(&models.UserProblem{}).
 		Where("user_id = ? AND status = ?", userID, models.ProblemStatusSolved).
@@ -83,9 +87,9 @@ func (s *UserService) GetUserInfo(userID uint) (map[string]interface{}, error) {
 	completionRate := float64(solvedProblems) / float64(totalProblems) * 100
 
 	return map[string]interface{}{
-		"avatar": user.Avatar,
-		"username": user.Username,
-		"learn_progress": completionRate,
+		"avatar":          user.Avatar,
+		"username":        user.Username,
+		"learn_progress":  completionRate,
 		"solved_problems": solvedProblems,
 	}, nil
 }
