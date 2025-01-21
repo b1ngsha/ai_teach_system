@@ -24,8 +24,7 @@ func (tm *TasksManager) SyncLeetCodeProblems() {
 	taskRecord.Status = models.TaskStatusRunning
 	tm.db.Save(taskRecord)
 
-	// 异步执行同步任务
-	go func() {
+	func() {
 		defer func() {
 			endTime := time.Now()
 			taskRecord.EndTime = &endTime
@@ -41,10 +40,44 @@ func (tm *TasksManager) SyncLeetCodeProblems() {
 
 		taskRecord.TotalCount = len(problems)
 
+		// 先处理所有标签
+		allTags := make(map[string]*models.Tag)
+		for _, problem := range problems {
+			for _, tag := range problem.Tags {
+				if _, exists := allTags[tag.Name]; !exists {
+					allTags[tag.Name] = &tag
+				}
+			}
+		}
+
+		// 批量创建或更新标签
+		for _, tag := range allTags {
+			var existingTag models.Tag
+			result := tm.db.Where("name = ?", tag.Name).First(&existingTag)
+			if result.Error == gorm.ErrRecordNotFound {
+				if err := tm.db.Create(tag).Error; err != nil {
+					log.Printf("创建标签失败 %s: %v", tag.Name, err)
+					continue
+				}
+			} else {
+				tag.ID = existingTag.ID
+			}
+		}
+
 		// 增量更新题目
 		for _, problem := range problems {
 			var existingProblem models.Problem
 			result := tm.db.Where("leetcode_id = ?", problem.LeetcodeID).First(&existingProblem)
+
+			// 更新标签的ID
+			for i, tag := range problem.Tags {
+				var existingTag models.Tag
+				if err := tm.db.Where("name = ?", tag.Name).First(&existingTag).Error; err != nil {
+					log.Printf("获取标签失败 %s: %v", tag.Name, err)
+					continue
+				}
+				problem.Tags[i].ID = existingTag.ID
+			}
 
 			if result.Error == gorm.ErrRecordNotFound {
 				// 新题目，直接创建
