@@ -7,12 +7,13 @@ import (
 
 type User struct {
 	gorm.Model
-	Avatar    string `json:"avatar"`
-	Username  string `json:"username" gorm:"unique;not null"`
-	Name      string `json:"name" gorm:"unique;not null"`
-	StudentID string `json:"student_id" gorm:"unique;not null"`
-	Class     string `json:"class"`
-	Password  string `json:"-"`
+	Avatar    string    `json:"avatar"`
+	Username  string    `json:"username" gorm:"unique;not null"`
+	Name      string    `json:"name" gorm:"unique;not null"`
+	StudentID string    `json:"student_id" gorm:"unique;not null"`
+	Class     string    `json:"class"`
+	Password  string    `json:"-"`
+	Problems  []Problem `json:"-" gorm:"many2many:user_problems;"`
 }
 
 func (u *User) BeforeSave(tx *gorm.DB) error {

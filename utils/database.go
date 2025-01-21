@@ -28,7 +28,6 @@ func InitDB() *gorm.DB {
 	err = db.AutoMigrate(
 		&models.Problem{},
 		&models.Tag{},
-		&models.KnowledgePoint{},
 		&models.TaskRecord{},
 		&models.User{},
 	)

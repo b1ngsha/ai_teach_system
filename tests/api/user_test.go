@@ -31,8 +31,17 @@ func setupUserTest() (*gin.Engine, *gorm.DB, func()) {
 	}
 	userController := controllers.NewUserController(userService, mockOSSService)
 
+	// 公开路由
 	r.POST("/api/users/register", userController.Register)
 	r.POST("/api/users/login", userController.Login)
+
+	// 需要认证的路由
+	auth := r.Group("/api/users")
+	auth.Use(func(c *gin.Context) {
+		c.Set("userID", uint(1)) // 在测试中模拟认证用户
+		c.Next()
+	})
+	auth.GET("", userController.GetUserInfo)
 
 	return r, db, cleanup
 }
@@ -220,4 +229,48 @@ func TestUserLogin(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetUserProgress(t *testing.T) {
+	r, db, cleanup := setupUserTest()
+	defer cleanup()
+
+	user := &models.User{
+		Username:  "testuser",
+		Avatar:    "https://example.com/avatar.jpg",
+		Name:      "Test User",
+		StudentID: "2024001",
+		Class:     "CS-01",
+	}
+	db.Create(user)
+
+	problem := &models.Problem{
+		Title:      "Two Sum",
+		LeetcodeID: 1,
+		TitleSlug:  "two-sum",
+		Difficulty: "Easy",
+	}
+	db.Create(problem)
+
+	userProblem := &models.UserProblem{
+		UserID:    user.ID,
+		ProblemID: problem.ID,
+		Status:    models.ProblemStatusSolved,
+	}
+	db.Create(userProblem)
+
+	req := httptest.NewRequest("GET", "/api/users", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "testuser", response["username"])
+	assert.Equal(t, "https://example.com/avatar.jpg", response["avatar"])
+	assert.Equal(t, float64(1), response["solved_problems"])
+	assert.Equal(t, float64(100), response["learn_progress"])
 }

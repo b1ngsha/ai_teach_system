@@ -99,3 +99,14 @@ func (c *UserController) Register(ctx *gin.Context) {
 		"message": "注册成功",
 	})
 }
+
+func (c *UserController) GetUserInfo(ctx *gin.Context) {
+	userID := ctx.GetUint("userID")
+	userInfo, err := c.userService.GetUserInfo(userID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("获取用户信息失败: %v", err)})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, userInfo)
+}
