@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"ai_teach_system/services"
+	"ai_teach_system/utils"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -27,7 +29,7 @@ type GenerateCodeRequest struct {
 func (c *AIController) GenerateCode(ctx *gin.Context) {
 	var req GenerateCodeRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
 		return
 	}
 
@@ -39,11 +41,11 @@ func (c *AIController) GenerateCode(ctx *gin.Context) {
 	})
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("生成代码失败: %v", err)))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	ctx.JSON(http.StatusOK, utils.Success(gin.H{
 		"code": code,
-	})
+	}))
 }

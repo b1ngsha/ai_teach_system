@@ -39,26 +39,26 @@ func NewUserController(service *services.UserService, ossService services.OSSSer
 func (c *UserController) Login(ctx *gin.Context) {
 	var req LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
 		return
 	}
 
 	token, err := c.userService.Login(req.StudentID, req.Password)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusUnauthorized, utils.Error(err.Error()))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	ctx.JSON(http.StatusOK, utils.Success(gin.H{
 		"token": token,
-	})
+	}))
 }
 
 func (c *UserController) Register(ctx *gin.Context) {
 	var req RegisterRequest
 
 	if err := ctx.Request.ParseMultipartForm(32 << 20); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
 		return
 	}
 
@@ -69,44 +69,44 @@ func (c *UserController) Register(ctx *gin.Context) {
 	req.Class = ctx.Request.FormValue("class")
 
 	if req.Username == "" || req.Password == "" || req.Name == "" || req.StudentID == "" || req.Class == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "缺少必填字段"})
+		ctx.JSON(http.StatusBadRequest, utils.Error("缺少必填字段"))
 		return
 	}
 
 	file, err := ctx.FormFile("avatar")
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "请选择要上传的头像"})
+		ctx.JSON(http.StatusBadRequest, utils.Error("请选择要上传的头像"))
 		return
 	}
 
 	if !utils.IsValidImageFile(file.Filename) {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "只支持上传图片文件"})
+		ctx.JSON(http.StatusBadRequest, utils.Error("只支持上传图片文件"))
 		return
 	}
 
 	avatarURL, err := c.ossService.UploadAvatar(file)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("上传头像失败: %v", err)})
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("上传头像失败: %v", err)))
 		return
 	}
 
 	if err := c.userService.Register(req.Username, req.Password, req.Name, req.StudentID, req.Class, avatarURL); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{
+	ctx.JSON(http.StatusCreated, utils.Success(gin.H{
 		"message": "注册成功",
-	})
+	}))
 }
 
 func (c *UserController) GetUserInfo(ctx *gin.Context) {
 	userID := ctx.GetUint("userID")
 	userInfo, err := c.userService.GetUserInfo(userID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("获取用户信息失败: %v", err)})
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取用户信息失败: %v", err)))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, userInfo)
+	ctx.JSON(http.StatusOK, utils.Success(userInfo))
 }

@@ -6,6 +6,7 @@ import (
 	"ai_teach_system/services"
 	"ai_teach_system/tests"
 	"ai_teach_system/tests/mocks"
+	"ai_teach_system/utils"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -38,15 +39,16 @@ func TestLeetCodeController_GetProblem(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 
-	response := map[string]interface{}{}
+	var response utils.Response
 	httpClient := resty.New()
 	httpClient.R().SetResult(&response).Get(fmt.Sprintf("%s/problems/1", server.URL))
 
-	leetcodeID := int(response["leetcode_id"].(float64))
+	resp := response.Data.(map[string]interface{})
+	leetcodeID := int(resp["leetcode_id"].(float64))
 
 	assert.Equal(t, 1, leetcodeID)
-	assert.Equal(t, "Two Sum", response["title"])
-	assert.Equal(t, "Easy", response["difficulty"])
+	assert.Equal(t, "Two Sum", resp["title"])
+	assert.Equal(t, "Easy", resp["difficulty"])
 }
 
 func TestLeetCodeController_RunTestCase(t *testing.T) {

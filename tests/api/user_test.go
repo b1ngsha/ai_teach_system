@@ -6,6 +6,7 @@ import (
 	"ai_teach_system/services"
 	"ai_teach_system/tests"
 	"ai_teach_system/tests/mocks"
+	"ai_teach_system/utils"
 	"bytes"
 	"encoding/json"
 	"mime/multipart"
@@ -125,7 +126,7 @@ func TestUserRegister(t *testing.T) {
 				var response map[string]interface{}
 				err = json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)
-				assert.Contains(t, response, "error")
+				assert.False(t, response["result"].(bool))
 			} else {
 				var count int64
 				db.Model(&models.User{}).Where("username = ?", tt.payload.Username).Count(&count)
@@ -217,15 +218,19 @@ func TestUserLogin(t *testing.T) {
 
 			assert.Equal(t, tt.wantStatus, w.Code)
 
-			var response map[string]interface{}
+			var response utils.Response
 			err = json.Unmarshal(w.Body.Bytes(), &response)
 			assert.NoError(t, err)
 
 			if tt.wantToken {
-				assert.Contains(t, response, "token")
-				assert.NotEmpty(t, response["token"])
+				assert.True(t, response.Result)
+				assert.Empty(t, response.Message)
+				data := response.Data.(map[string]interface{})
+				assert.NotEmpty(t, data["token"])
 			} else {
-				assert.Contains(t, response, "error")
+				assert.False(t, response.Result)
+				assert.NotEmpty(t, response.Message)
+				assert.Nil(t, response.Data)
 			}
 		})
 	}
@@ -265,12 +270,15 @@ func TestGetUserProgress(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response map[string]interface{}
+	var response utils.Response
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
+	assert.True(t, response.Result)
+	assert.Empty(t, response.Message)
 
-	assert.Equal(t, "testuser", response["username"])
-	assert.Equal(t, "https://example.com/avatar.jpg", response["avatar"])
-	assert.Equal(t, float64(1), response["solved_problems"])
-	assert.Equal(t, float64(100), response["learn_progress"])
+	data := response.Data.(map[string]interface{})
+	assert.Equal(t, "testuser", data["username"])
+	assert.Equal(t, "https://example.com/avatar.jpg", data["avatar"])
+	assert.Equal(t, float64(1), data["solved_problems"])
+	assert.Equal(t, float64(100), data["learn_progress"])
 }

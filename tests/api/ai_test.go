@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"ai_teach_system/utils"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
@@ -91,15 +93,19 @@ func TestGenerateCode(t *testing.T) {
 
 			assert.Equal(t, tt.wantStatus, w.Code)
 
-			var response map[string]interface{}
+			var response utils.Response
 			err = json.Unmarshal(w.Body.Bytes(), &response)
-			assert.NoError(t, err)
 
 			if tt.wantError {
-				assert.Contains(t, response, "error")
+				assert.False(t, response.Result)
 			} else {
-				assert.Contains(t, response, "code")
-				assert.Equal(t, tt.mockCode, response["code"])
+				assert.NoError(t, err)
+				assert.True(t, response.Result)
+				assert.Empty(t, response.Message)
+
+				data := response.Data.(map[string]interface{})
+				assert.NotEmpty(t, data["code"])
+				assert.Equal(t, tt.mockCode, data["code"])
 			}
 		})
 	}
