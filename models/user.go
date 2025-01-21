@@ -9,11 +9,10 @@ type User struct {
 	gorm.Model
 	Avatar    string `json:"avatar"`
 	Username  string `json:"username" gorm:"unique;not null"`
-	Name      string `json:"name"`
+	Name      string `json:"name" gorm:"unique;not null"`
 	StudentID string `json:"student_id" gorm:"unique;not null"`
 	Class     string `json:"class"`
 	Password  string `json:"-"`
-	Salt      string `json:"-"`
 }
 
 func (u *User) BeforeSave(tx *gorm.DB) error {

@@ -2,29 +2,48 @@ package controllers
 
 import (
 	"ai_teach_system/services"
+	"ai_teach_system/utils"
+	"fmt"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-type UserController struct {
-	service *services.UserService
+type LoginRequest struct {
+	StudentID string `json:"student_id" binding:"required"`
+	Password  string `json:"password" binding:"required"`
 }
 
-func NewUserController(service *services.UserService) *UserController {
+type RegisterRequest struct {
+	Username  string
+	Password  string
+	Name      string
+	StudentID string
+	Class     string
+	Avatar    *multipart.FileHeader
+}
+
+type UserController struct {
+	userService *services.UserService
+	ossService  services.OSSServiceInterface
+}
+
+func NewUserController(service *services.UserService, ossService services.OSSServiceInterface) *UserController {
 	return &UserController{
-		service: service,
+		userService: service,
+		ossService:  ossService,
 	}
 }
 
 func (c *UserController) Login(ctx *gin.Context) {
-	var req services.LoginRequest
+	var req LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	token, err := c.service.Login(&req)
+	token, err := c.userService.Login(req.StudentID, req.Password)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -36,13 +55,42 @@ func (c *UserController) Login(ctx *gin.Context) {
 }
 
 func (c *UserController) Register(ctx *gin.Context) {
-	var req services.RegisterRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	var req RegisterRequest
+
+	if err := ctx.Request.ParseMultipartForm(32 << 20); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := c.service.Register(&req); err != nil {
+	req.Username = ctx.Request.FormValue("username")
+	req.Password = ctx.Request.FormValue("password")
+	req.Name = ctx.Request.FormValue("name")
+	req.StudentID = ctx.Request.FormValue("student_id")
+	req.Class = ctx.Request.FormValue("class")
+
+	if req.Username == "" || req.Password == "" || req.Name == "" || req.StudentID == "" || req.Class == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "缺少必填字段"})
+		return
+	}
+
+	file, err := ctx.FormFile("avatar")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "请选择要上传的头像"})
+		return
+	}
+
+	if !utils.IsValidImageFile(file.Filename) {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "只支持上传图片文件"})
+		return
+	}
+
+	avatarURL, err := c.ossService.UploadAvatar(file)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("上传头像失败: %v", err)})
+		return
+	}
+
+	if err := c.userService.Register(req.Username, req.Password, req.Name, req.StudentID, req.Class, avatarURL); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

@@ -12,12 +12,13 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	api := r.Group("/api")
 
 	// 需要鉴权的路由
-	api.Use(AuthMiddleware())
+	auth := api.Group("")
+	auth.Use(AuthMiddleware())
 	{
 		// LeetCode 相关路由
 		leetcodeService := services.NewLeetCodeService()
 		leetcodeController := controllers.NewLeetCodeController(db, leetcodeService)
-		leetcode := api.Group("/leetcode")
+		leetcode := auth.Group("/leetcode")
 		{
 			leetcode.GET("/problems/:id", leetcodeController.GetProblem)
 			leetcode.POST("/interpret_solution", leetcodeController.RunTestCase)
@@ -27,7 +28,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		// AI 相关路由
 		aiService := services.NewAIService()
 		aiController := controllers.NewAIController(aiService)
-		ai := api.Group("/ai")
+		ai := auth.Group("/ai")
 		{
 			ai.POST("/generate_code", aiController.GenerateCode)
 		}
@@ -35,9 +36,11 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 
 	// 用户相关路由
 	userService := services.NewUserService(db)
-	userController := controllers.NewUserController(userService)
+	ossService, _ := services.NewOSSService()
+	userController := controllers.NewUserController(userService, ossService)
 	users := api.Group("/users")
 	{
 		users.POST("/login", userController.Login)
+		users.POST("/register", userController.Register)
 	}
 }

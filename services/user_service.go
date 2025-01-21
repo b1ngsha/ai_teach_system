@@ -19,29 +19,16 @@ func NewUserService(db *gorm.DB) *UserService {
 	return &UserService{db: db}
 }
 
-type LoginRequest struct {
-	StudentID string `json:"student_id" binding:"required"`
-	Password  string `json:"password" binding:"required"`
-}
-
-type RegisterRequest struct {
-	Username  string `json:"username" binding:"required"`
-	Password  string `json:"password" binding:"required"`
-	Name      string `json:"name" binding:"required"`
-	StudentID string `json:"student_id" binding:"required"`
-	Class     string `json:"class" binding:"required"`
-}
-
-func (s *UserService) Login(req *LoginRequest) (string, error) {
+func (s *UserService) Login(studentID string, password string) (string, error) {
 	var user models.User
-	if err := s.db.Where("student_id = ?", req.StudentID).First(&user).Error; err != nil {
+	if err := s.db.Where("student_id = ?", studentID).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", errors.New("用户不存在")
 		}
 		return "", err
 	}
 
-	if !user.ValidatePassword(req.Password) {
+	if !user.ValidatePassword(password) {
 		return "", errors.New("密码错误")
 	}
 
@@ -60,19 +47,20 @@ func (s *UserService) Login(req *LoginRequest) (string, error) {
 	return tokenString, nil
 }
 
-func (s *UserService) Register(req *RegisterRequest) error {
+func (s *UserService) Register(username string, password string, name string, studentId string, class string, avatar string) error {
 	var count int64
-	s.db.Model(&models.User{}).Where("username = ?", req.Username).Or("student_id = ?", req.StudentID).Count(&count)
+	s.db.Model(&models.User{}).Where("username = ?", username).Or("student_id = ?", studentId).Count(&count)
 	if count > 0 {
 		return errors.New("用户已存在")
 	}
 
 	user := models.User{
-		Username:  req.Username,
-		Password:  req.Password,
-		Name:      req.Name,
-		StudentID: req.StudentID,
-		Class:     req.Class,
+		Username:  username,
+		Password:  password,
+		Name:      name,
+		StudentID: studentId,
+		Class:     class,
+		Avatar:    avatar,
 	}
 
 	return s.db.Create(&user).Error

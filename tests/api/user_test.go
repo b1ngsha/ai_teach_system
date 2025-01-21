@@ -5,8 +5,10 @@ import (
 	"ai_teach_system/models"
 	"ai_teach_system/services"
 	"ai_teach_system/tests"
+	"ai_teach_system/tests/mocks"
 	"bytes"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,10 +24,15 @@ func setupUserTest() (*gin.Engine, *gorm.DB, func()) {
 
 	r := gin.New()
 	userService := services.NewUserService(db)
-	userController := controllers.NewUserController(userService)
+	mockOSSService := &mocks.MockOSSService{
+		UploadAvatarFunc: func(file *multipart.FileHeader) (string, error) {
+			return "https://example.com/avatars/test.jpg", nil
+		},
+	}
+	userController := controllers.NewUserController(userService, mockOSSService)
 
-	r.POST("/api/user/register", userController.Register)
-	r.POST("/api/user/login", userController.Login)
+	r.POST("/api/users/register", userController.Register)
+	r.POST("/api/users/login", userController.Login)
 
 	return r, db, cleanup
 }
@@ -36,13 +43,13 @@ func TestUserRegister(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		payload    services.RegisterRequest
+		payload    controllers.RegisterRequest
 		wantStatus int
 		wantErr    bool
 	}{
 		{
 			name: "valid registration",
-			payload: services.RegisterRequest{
+			payload: controllers.RegisterRequest{
 				Username:  "testuser",
 				Password:  "password123",
 				Name:      "Test User",
@@ -54,7 +61,7 @@ func TestUserRegister(t *testing.T) {
 		},
 		{
 			name: "duplicate username",
-			payload: services.RegisterRequest{
+			payload: controllers.RegisterRequest{
 				Username:  "testuser",
 				Password:  "password123",
 				Name:      "Test User 2",
@@ -66,7 +73,7 @@ func TestUserRegister(t *testing.T) {
 		},
 		{
 			name: "empty username",
-			payload: services.RegisterRequest{
+			payload: controllers.RegisterRequest{
 				Username:  "",
 				Password:  "password123",
 				Name:      "Test User",
@@ -80,11 +87,25 @@ func TestUserRegister(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			jsonData, err := json.Marshal(tt.payload)
+			body := &bytes.Buffer{}
+			writer := multipart.NewWriter(body)
+
+			_ = writer.WriteField("username", tt.payload.Username)
+			_ = writer.WriteField("password", tt.payload.Password)
+			_ = writer.WriteField("name", tt.payload.Name)
+			_ = writer.WriteField("student_id", tt.payload.StudentID)
+			_ = writer.WriteField("class", tt.payload.Class)
+
+			part, err := writer.CreateFormFile("avatar", "test_avatar.jpg")
+			assert.NoError(t, err)
+			_, err = part.Write([]byte("fake image content"))
 			assert.NoError(t, err)
 
-			req := httptest.NewRequest("POST", "/api/user/register", bytes.NewBuffer(jsonData))
-			req.Header.Set("Content-Type", "application/json")
+			err = writer.Close()
+			assert.NoError(t, err)
+
+			req := httptest.NewRequest("POST", "/api/users/register", body)
+			req.Header.Set("Content-Type", writer.FormDataContentType())
 			w := httptest.NewRecorder()
 
 			r.ServeHTTP(w, req)
@@ -100,61 +121,70 @@ func TestUserRegister(t *testing.T) {
 				var count int64
 				db.Model(&models.User{}).Where("username = ?", tt.payload.Username).Count(&count)
 				assert.Equal(t, int64(1), count)
+
+				var user models.User
+				err := db.Where("username = ?", tt.payload.Username).First(&user).Error
+				assert.NoError(t, err)
+				assert.NotEmpty(t, user.Avatar)
+				assert.Contains(t, user.Avatar, "https://example.com/avatars/test.jpg")
 			}
 		})
 	}
 }
 
 func TestUserLogin(t *testing.T) {
-	r, db, cleanup := setupUserTest()
+	r, _, cleanup := setupUserTest()
 	defer cleanup()
 
-	testUser := services.RegisterRequest{
-		Username:  "testuser",
-		Password:  "password123",
-		Name:      "Test User",
-		StudentID: "2024001",
-		Class:     "CS-01",
-	}
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
 
-	userService := services.NewUserService(db)
-	err := userService.Register(&testUser)
+	_ = writer.WriteField("username", "testuser")
+	_ = writer.WriteField("password", "password123")
+	_ = writer.WriteField("name", "Test User")
+	_ = writer.WriteField("student_id", "2024001")
+	_ = writer.WriteField("class", "CS-01")
+
+	part, err := writer.CreateFormFile("avatar", "test_avatar.jpg")
+	assert.NoError(t, err)
+	_, err = part.Write([]byte("fake image content"))
 	assert.NoError(t, err)
 
-	var count int64
-	db.Model(&models.User{}).Where("username = ?", "testuser").Count(&count)
-	assert.Equal(t, int64(1), count)
+	err = writer.Close()
+	assert.NoError(t, err)
+
+	// 注册测试用户
+	req := httptest.NewRequest("POST", "/api/users/register", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusCreated, w.Code)
 
 	tests := []struct {
 		name       string
-		payload    services.LoginRequest
+		studentID  string
+		password   string
 		wantStatus int
 		wantToken  bool
 	}{
 		{
-			name: "valid login",
-			payload: services.LoginRequest{
-				StudentID: "2024001",
-				Password:  "password123",
-			},
+			name:       "valid login",
+			studentID:  "2024001",
+			password:   "password123",
 			wantStatus: http.StatusOK,
 			wantToken:  true,
 		},
 		{
-			name: "invalid password",
-			payload: services.LoginRequest{
-				StudentID: "2024001",
-				Password:  "wrongpassword",
-			},
+			name:       "invalid password",
+			studentID:  "2024001",
+			password:   "wrongpassword",
 			wantStatus: http.StatusUnauthorized,
 			wantToken:  false,
 		},
 		{
-			name: "non-existent user",
-			payload: services.LoginRequest{
-				StudentID: "2024002",
-				Password:  "password123",
-			},
+			name:       "non-existent user",
+			studentID:  "2024002",
+			password:   "password123",
 			wantStatus: http.StatusUnauthorized,
 			wantToken:  false,
 		},
@@ -162,10 +192,15 @@ func TestUserLogin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			jsonData, err := json.Marshal(tt.payload)
+			loginData := map[string]string{
+				"student_id": tt.studentID,
+				"password":   tt.password,
+			}
+
+			jsonData, err := json.Marshal(loginData)
 			assert.NoError(t, err)
 
-			req := httptest.NewRequest("POST", "/api/user/login", bytes.NewBuffer(jsonData))
+			req := httptest.NewRequest("POST", "/api/users/login", bytes.NewBuffer(jsonData))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
