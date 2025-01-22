@@ -44,6 +44,15 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		{
 			users.GET("", userController.GetUserInfo)
 		}
+
+		// 课程相关路由
+		courseService := services.NewCourseService(db)
+		courseController := controllers.NewCourseController(courseService)
+
+		courses := auth.Group("/courses")
+		{
+			courses.GET("/:id", courseController.GetCourseDetail)
+		}
 	}
 
 	// 用户相关路由

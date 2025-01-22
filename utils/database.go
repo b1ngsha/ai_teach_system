@@ -19,7 +19,9 @@ func InitDB() *gorm.DB {
 		config.DB.DBName,
 	)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
 	if err != nil {
 		log.Fatal("数据库连接失败：", err)
 	}
@@ -30,6 +32,9 @@ func InitDB() *gorm.DB {
 		&models.Tag{},
 		&models.TaskRecord{},
 		&models.User{},
+		&models.Course{},
+		&models.KnowledgePoint{},
+		&models.UserProblem{},
 	)
 	if err != nil {
 		log.Fatal("数据库迁移失败：", err)

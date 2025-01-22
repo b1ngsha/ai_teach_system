@@ -1,6 +1,10 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type ProblemStatus string
 
@@ -11,10 +15,11 @@ const (
 )
 
 type UserProblem struct {
-	gorm.Model
-	UserID    uint          `json:"user_id" gorm:"index:idx_user_problem"`
-	ProblemID uint          `json:"problem_id" gorm:"index:idx_user_problem"`
+	UserID    uint          `json:"user_id" gorm:"primaryKey;autoIncrement:false"`
+	ProblemID uint          `json:"problem_id" gorm:"primaryKey;autoIncrement:false"`
 	Status    ProblemStatus `json:"status" gorm:"type:ENUM('UNTRIED', 'TRIED', 'SOLVED');default:'UNTRIED'"`
+	CreatedAt time.Time     `json:"created_at"`
+	UpdatedAt time.Time     `json:"updated_at"`
 
 	User    User    `json:"-" gorm:"foreignkey:UserID"`
 	Problem Problem `json:"-" gorm:"foreignkey:ProblemID"`
