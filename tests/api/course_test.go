@@ -39,7 +39,14 @@ func TestGetCourseDetail(t *testing.T) {
 	r, db, cleanup := setupCourseTest()
 	defer cleanup()
 
-	// 创建测试数据
+	user := &models.User{
+		Username:  "testuser",
+		Name:      "Test User",
+		StudentID: "2024001",
+		Class:     "CS-01",
+	}
+	db.Create(user)
+
 	course := &models.Course{
 		Name: "数据结构与算法",
 	}
@@ -65,7 +72,13 @@ func TestGetCourseDetail(t *testing.T) {
 	db.Create(problem)
 	db.Model(problem).Association("Tags").Append(tag)
 
-	// 发送请求
+	userProblem := &models.UserProblem{
+		UserID:    user.ID,
+		ProblemID: problem.ID,
+		Status:    models.ProblemStatusTried,
+	}
+	db.Create(&userProblem)
+
 	req := httptest.NewRequest("GET", "/api/courses/"+fmt.Sprint(course.ID), nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -91,4 +104,18 @@ func TestGetCourseDetail(t *testing.T) {
 	tags := point0["tags"].([]interface{})
 	assert.Len(t, tags, 1)
 	assert.Equal(t, "数组操作", tags[0].(map[string]interface{})["name"])
+
+	skillAnalysis := data["skill_analysis"].([]interface{})
+	assert.Len(t, skillAnalysis, 1)
+	analysis0 := skillAnalysis[0].(map[string]interface{})
+	assert.Equal(t, "数组", analysis0["knowledge_point"])
+	assert.Equal(t, float64(0), analysis0["correct_rate"])
+	assert.Equal(t, float64(1), analysis0["total_attempts"])
+	assert.Equal(t, float64(0), analysis0["correct_count"])
+
+	overview := data["overview"].(map[string]interface{})
+	assert.Equal(t, float64(1), overview["total_problems"])
+	assert.Equal(t, float64(1), overview["attempted_problems"])
+	assert.Equal(t, float64(0), overview["correct_rate"])
+	assert.Equal(t, float64(1), overview["wrong_problems"])
 }
