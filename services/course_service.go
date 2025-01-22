@@ -18,8 +18,8 @@ func NewCourseService(db *gorm.DB) *CourseService {
 type KnowledgePointInfo struct {
 	ID           uint   `json:"id"`
 	Name         string `json:"name"`
-	ProblemCount int64  `json:"problem_count"` // 知识点下的总题目数
-	SolvedCount  int64  `json:"solved_count"`  // 用户已解决的题目数
+	ProblemCount int64  `json:"problem_count"`
+	SolvedCount  int64  `json:"solved_count"`
 	Tags         []Tag  `json:"tags"`
 }
 
@@ -30,18 +30,18 @@ type Tag struct {
 
 // 能力分析报告
 type SkillAnalysis struct {
-	KnowledgePoint string  `json:"knowledge_point"` // 知识点名称
-	CorrectRate    float64 `json:"correct_rate"`    // 正确率
-	TotalAttempts  int64   `json:"total_attempts"`  // 总尝试次数
-	CorrectCount   int64   `json:"correct_count"`   // 正确次数
+	KnowledgePoint string  `json:"knowledge_point"`
+	CorrectRate    float64 `json:"correct_rate"`
+	TotalAttempts  int64   `json:"total_attempts"`
+	CorrectCount   int64   `json:"correct_count"`
 }
 
 // 整体学习情况
 type StudyOverview struct {
-	TotalProblems     int64   `json:"total_problems"`     // 总题目数
-	AttemptedProblems int64   `json:"attempted_problems"` // 已尝试题目数
-	CorrectRate       float64 `json:"correct_rate"`       // 整体正确率
-	WrongProblems     int64   `json:"wrong_problems"`     // 错题数
+	TotalProblems     int64   `json:"total_problems"`
+	AttemptedProblems int64   `json:"attempted_problems"`
+	CorrectRate       float64 `json:"correct_rate"`
+	WrongProblems     int64   `json:"wrong_problems"`
 }
 
 func (s *CourseService) GetCourseDetail(courseID, userID uint) (*models.Course, []KnowledgePointInfo, []SkillAnalysis, *StudyOverview, error) {

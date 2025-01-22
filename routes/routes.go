@@ -21,6 +21,12 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	aiService := services.NewAIService()
 	aiController := controllers.NewAIController(aiService)
 
+	courseService := services.NewCourseService(db)
+	courseController := controllers.NewCourseController(courseService)
+
+	problemService := services.NewProblemService(db)
+	problemController := controllers.NewProblemController(problemService)
+
 	// 需要鉴权的路由
 	auth := api.Group("")
 	auth.Use(AuthMiddleware())
@@ -46,12 +52,15 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		}
 
 		// 课程相关路由
-		courseService := services.NewCourseService(db)
-		courseController := controllers.NewCourseController(courseService)
-
 		courses := auth.Group("/courses")
 		{
 			courses.GET("/:id", courseController.GetCourseDetail)
+		}
+
+		// 题库相关路由
+		problems := auth.Group("/problems")
+		{
+			problems.POST("", problemController.GetProblemList)
 		}
 	}
 

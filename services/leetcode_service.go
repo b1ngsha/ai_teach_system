@@ -185,7 +185,7 @@ func (s *LeetCodeService) FetchProblemDetail(titleSlug string) (*models.Problem,
 		LeetcodeID:      leetcodeID,
 		Title:           question["title"].(string),
 		TitleSlug:       titleSlug,
-		Difficulty:      question["difficulty"].(string),
+		Difficulty:      question["difficulty"].(models.ProblemDifficulty),
 		Content:         content,
 		SampleTestcases: question["sampleTestCase"].(string),
 	}
