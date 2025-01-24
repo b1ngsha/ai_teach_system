@@ -14,11 +14,10 @@ func NewProblemService(db *gorm.DB) *ProblemService {
 	return &ProblemService{db: db}
 }
 
-func (s *ProblemService) GetProblemList(difficulty models.ProblemDifficulty, knowledgePointID uint) ([]map[string]interface{}, error) {
-	response := make([]map[string]interface{}, 0, 10)
+func (s *ProblemService) GetProblemList(userID uint, difficulty models.ProblemDifficulty, knowledgePointID uint) ([]map[string]interface{}, error) {
+	problems := make([]map[string]interface{}, 0, 10)
 	query := s.db.Model(&models.Problem{}).
-		Select("leetcode_id, title_slug, difficulty, status").
-		Joins("JOIN user_problems ON problems.id = user_problems.problem_id").
+		Select("problems.id, leetcode_id, title_slug, difficulty").
 		Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
 		Joins("JOIN tags ON problem_tag.tag_id = tags.id")
 	if knowledgePointID != 0 {
@@ -27,13 +26,31 @@ func (s *ProblemService) GetProblemList(difficulty models.ProblemDifficulty, kno
 	if difficulty != "" {
 		query = query.Where("difficulty = ?", difficulty)
 	}
-	err := query.Find(&response).Error
-
-	for index, item := range response {
-		response[index]["status"] = string(item["status"].([]uint8))
-	}
+	err := query.Find(&problems).Error
 	if err != nil {
 		return nil, err
 	}
-	return response, nil
+
+	problemStatus := make([]map[string]interface{}, 0, 10)
+	err = s.db.Model(&models.UserProblem{}).
+		Select("problem_id, status").
+		Where("user_id = ?", userID).
+		Find(&problemStatus).Error
+	if err != nil {
+		return nil, err
+	}
+
+outer:
+	for _, problem := range problems {
+		for _, status := range problemStatus {
+			problemID := status["problem_id"].(uint)
+			status := status["status"].(models.ProblemStatus)
+			if problemID == problem["id"] {
+				problem["status"] = status
+				continue outer
+			}
+		}
+		problem["status"] = models.ProblemStatusUntried
+	}
+	return problems, nil
 }

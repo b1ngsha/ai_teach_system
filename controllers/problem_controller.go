@@ -5,6 +5,7 @@ import (
 	"ai_teach_system/services"
 	"ai_teach_system/utils"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -19,18 +20,19 @@ func NewProblemController(service *services.ProblemService) *ProblemController {
 }
 
 type GetProblemListRequest struct {
-	Difficulty       models.ProblemDifficulty `json:"difficulty" binding:""`
+	Difficulty       models.ProblemDifficulty `json:"difficulty"`
 	KnowledgePointID uint                     `json:"knowledge_point_id"`
 }
 
 func (c *ProblemController) GetProblemList(ctx *gin.Context) {
 	var req GetProblemListRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBindJSON(&req); err != nil && err != io.EOF {
 		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
 		return
 	}
 
-	response, err := c.service.GetProblemList(req.Difficulty, req.KnowledgePointID)
+	userID := ctx.GetUint("userID")
+	response, err := c.service.GetProblemList(userID, req.Difficulty, req.KnowledgePointID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprint("获取题目列表失败")))
 		return
