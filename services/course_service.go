@@ -54,7 +54,7 @@ func (s *CourseService) GetCourseDetail(courseID, userID uint) (*models.Course, 
 	}
 
 	var points []models.KnowledgePoint
-	if err := s.db.Where("course_id = ?", courseID).Find(&points).Error; err != nil {
+	if err := s.db.Model(&models.KnowledgePoint{}).Where("course_id = ?", courseID).Find(&points).Error; err != nil {
 		return nil, nil, nil, nil, err
 	}
 
@@ -66,22 +66,22 @@ func (s *CourseService) GetCourseDetail(courseID, userID uint) (*models.Course, 
 			Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
 			Joins("JOIN tags ON problem_tag.tag_id = tags.id").
 			Where("tags.knowledge_point_id = ?", point.ID).
-			Distinct().
+			Distinct("problems.id").
 			Count(&problemCount)
 
 		// 获取用户已解决的题目数
 		var solvedCount int64
-		s.db.Model(&models.Problem{}).
+		s.db.Model(&models.UserProblem{}).
+			Joins("JOIN problems ON user_problems.problem_id = problems.id").
 			Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
 			Joins("JOIN tags ON problem_tag.tag_id = tags.id").
-			Joins("JOIN user_problems ON problems.id = user_problems.problem_id").
 			Where("tags.knowledge_point_id = ? AND user_problems.user_id = ? AND user_problems.status = ?",
 				point.ID, userID, models.ProblemStatusSolved).
-			Distinct().
+			Distinct("user_problems.problem_id").
 			Count(&solvedCount)
 
 		var tags []models.Tag
-		s.db.Where("knowledge_point_id = ?", point.ID).Find(&tags)
+		s.db.Model(&models.Tag{}).Where("knowledge_point_id = ?", point.ID).Find(&tags)
 
 		tagInfos := make([]Tag, len(tags))
 		for i, tag := range tags {
@@ -107,11 +107,11 @@ func (s *CourseService) GetCourseDetail(courseID, userID uint) (*models.Course, 
 
 		// 获取该知识点下的所有提交记录
 		err := s.db.Model(&models.UserProblem{}).
-			Select("COUNT(*) as total_attempts, SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as correct_count", models.ProblemStatusSolved).
+			Select("COUNT(*) as total_attempts, COUNT(DISTINCT(problems.id)) as correct_count").
 			Joins("JOIN problems ON user_problems.problem_id = problems.id").
 			Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
 			Joins("JOIN tags ON problem_tag.tag_id = tags.id").
-			Where("tags.knowledge_point_id = ? AND user_problems.user_id = ?", point.ID, userID).
+			Where("tags.knowledge_point_id = ? AND user_problems.user_id = ? AND user_problems.status = ?", point.ID, userID, models.ProblemStatusSolved).
 			Row().Scan(&totalAttempts, &correctCount)
 
 		if err != nil {
@@ -140,18 +140,18 @@ func (s *CourseService) GetCourseDetail(courseID, userID uint) (*models.Course, 
 		Joins("JOIN tags ON problem_tag.tag_id = tags.id").
 		Joins("JOIN knowledge_points ON tags.knowledge_point_id = knowledge_points.id").
 		Where("knowledge_points.course_id = ?", courseID).
-		Distinct().
+		Distinct("problems.id").
 		Count(&overview.TotalProblems)
 
 	// 获取已尝试的题目数和正确率
 	var correctCount int64
 	s.db.Model(&models.UserProblem{}).
-		Select("COUNT(DISTINCT problems.id) as attempted_problems, SUM(CASE WHEN user_problems.status = ? THEN 1 ELSE 0 END) as correct_count", models.ProblemStatusSolved).
+		Select("COUNT(*) as attempted_problems, COUNT(DISTINCT(problems.id)) as correct_count").
 		Joins("JOIN problems ON user_problems.problem_id = problems.id").
 		Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
 		Joins("JOIN tags ON problem_tag.tag_id = tags.id").
 		Joins("JOIN knowledge_points ON tags.knowledge_point_id = knowledge_points.id").
-		Where("knowledge_points.course_id = ? AND user_problems.user_id = ?", courseID, userID).
+		Where("knowledge_points.course_id = ? AND user_problems.user_id = ? AND user_problems.status = ?", courseID, userID, models.ProblemStatusSolved).
 		Row().Scan(&overview.AttemptedProblems, &correctCount)
 
 	if overview.AttemptedProblems > 0 {
