@@ -63,3 +63,19 @@ func (c *LeetCodeController) Submit(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, utils.Success(result))
 }
+
+func (c *LeetCodeController) Check(ctx *gin.Context) {
+	runCodeID := ctx.Param("id")
+	if runCodeID == "" {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的题目id"))
+		return
+	}
+	userID := ctx.GetUint("userID")
+
+	result, err := c.service.Check(userID, runCodeID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error("检查代码运行结果失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success(result))
+}

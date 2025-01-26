@@ -36,6 +36,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		{
 			leetcode.POST("/interpret_solution", leetcodeController.RunTestCase)
 			leetcode.POST("/submit", leetcodeController.Submit)
+			leetcode.GET("/check/:id", leetcodeController.Check)
 		}
 
 		// AI 相关路由

@@ -16,6 +16,7 @@ type LeetCodeServiceInterface interface {
 	FetchAllProblems() ([]*models.Problem, error)
 	RunTestCase(userID uint, questionId string, code string, lang string) (map[string]interface{}, error)
 	Submit(lang string, question_id string, code string) (map[string]interface{}, error)
+	Check(userID uint, runCodeID string) (map[string]interface{}, error)
 }
 
 type LeetCodeService struct {
@@ -248,4 +249,17 @@ func (s *LeetCodeService) Submit(lang string, leetcodeQuestionId string, code st
 
 	data := result["data"].(map[string]interface{})
 	return data, nil
+}
+
+func (s *LeetCodeService) Check(userID uint, runCodeID string) (map[string]interface{}, error) {
+	var result map[string]interface{}
+	path := fmt.Sprintf("/submissions/detail/%s/check", runCodeID)
+	_, err := s.Client.R().
+		SetResult(&result).
+		Get(path)
+
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
