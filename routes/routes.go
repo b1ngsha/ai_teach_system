@@ -15,8 +15,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	ossService, _ := services.NewOSSService()
 	userController := controllers.NewUserController(userService, ossService)
 
-	leetcodeService := services.NewLeetCodeService()
-	leetcodeController := controllers.NewLeetCodeController(db, leetcodeService)
+	leetcodeService := services.NewLeetCodeService(db)
+	leetcodeController := controllers.NewLeetCodeController(leetcodeService)
 
 	aiService := services.NewAIService()
 	aiController := controllers.NewAIController(aiService)

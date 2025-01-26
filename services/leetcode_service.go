@@ -1,6 +1,7 @@
 package services
 
 import (
+	"ai_teach_system/config"
 	"ai_teach_system/constants"
 	"ai_teach_system/models"
 	"fmt"
@@ -8,16 +9,18 @@ import (
 	"strconv"
 
 	"github.com/go-resty/resty/v2"
+	"gorm.io/gorm"
 )
 
 type LeetCodeServiceInterface interface {
 	FetchAllProblems() ([]*models.Problem, error)
-	RunTestCase(titleSlug string, questionId string, code string, testCase string, lang string) (map[string]interface{}, error)
-	Submit(titleSlug string, lang string, question_id string, code string) (map[string]interface{}, error)
+	RunTestCase(questionId string, code string, lang string) (map[string]interface{}, error)
+	Submit(lang string, question_id string, code string) (map[string]interface{}, error)
 }
 
 type LeetCodeService struct {
 	Client *resty.Client
+	db     *gorm.DB
 }
 
 type GraphQLQuery struct {
@@ -26,13 +29,14 @@ type GraphQLQuery struct {
 	OperationName string                 `json:"operationName"`
 }
 
-func NewLeetCodeService() *LeetCodeService {
+func NewLeetCodeService(db *gorm.DB) *LeetCodeService {
 	client := resty.New().
 		SetBaseURL(constants.LeetCodeHost).
 		SetHeader("Content-Type", "application/json")
 
 	return &LeetCodeService{
 		Client: client,
+		db:     db,
 	}
 }
 
@@ -193,17 +197,21 @@ func (s *LeetCodeService) FetchProblemDetail(titleSlug string) (*models.Problem,
 	return problem, nil
 }
 
-func (s *LeetCodeService) RunTestCase(titleSlug string, questionId string, code string, testCase string, lang string) (map[string]interface{}, error) {
+func (s *LeetCodeService) RunTestCase(leetcodeQuestionId string, code string, lang string) (map[string]interface{}, error) {
+	questionIdInt, _ := strconv.Atoi(leetcodeQuestionId)
+	var problem models.Problem
+	s.db.Model(&models.Problem{}).Where("leetcode_id = ?", questionIdInt).First(&problem)
 	body := &map[string]string{
-		"data_input":  testCase,
+		"data_input":  problem.SampleTestcases,
 		"lang":        lang,
-		"question_id": questionId,
+		"question_id": leetcodeQuestionId,
 		"typed_code":  code,
 	}
 
 	var result map[string]interface{}
-	path := fmt.Sprintf("/problems/%s/interpret_solution", titleSlug)
+	path := fmt.Sprintf("/problems/%s/interpret_solution", problem.TitleSlug)
 	_, err := s.Client.R().
+		SetHeader("Cookie", fmt.Sprintf("LEETCODE_SESSION=%s", config.Leetcode.LeetcodeSession)).
 		SetBody(body).
 		SetResult(&result).
 		Post(path)
@@ -212,18 +220,20 @@ func (s *LeetCodeService) RunTestCase(titleSlug string, questionId string, code 
 		return nil, err
 	}
 
-	data := result["data"].(map[string]interface{})
-	return data, nil
+	return result, nil
 }
 
-func (s *LeetCodeService) Submit(titleSlug string, lang string, question_id string, code string) (map[string]interface{}, error) {
+func (s *LeetCodeService) Submit(lang string, leetcodeQuestionId string, code string) (map[string]interface{}, error) {
+	questionIdInt, _ := strconv.Atoi(leetcodeQuestionId)
+	var problem models.Problem
+	s.db.Model(&models.Problem{}).Where("leetcode_id = ?", questionIdInt).First(&problem)
 	body := &map[string]string{
 		"lang":        lang,
-		"question_id": question_id,
+		"question_id": leetcodeQuestionId,
 		"typed_code":  code,
 	}
 	var result map[string]interface{}
-	path := fmt.Sprintf("/problems/%s/submit/", titleSlug)
+	path := fmt.Sprintf("/problems/%s/submit/", problem.TitleSlug)
 	_, err := s.Client.R().
 		SetBody(body).
 		SetResult(&result).

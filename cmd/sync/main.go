@@ -38,7 +38,7 @@ func main() {
 		log.Fatalf("创建任务记录失败: %v", err)
 	}
 
-	leetcodeService := services.NewLeetCodeService()
+	leetcodeService := services.NewLeetCodeService(db)
 	task := tasks.NewTasksManager(db, leetcodeService)
 	task.SyncLeetCodeProblems()
 

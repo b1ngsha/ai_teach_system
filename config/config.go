@@ -26,9 +26,14 @@ type ossConfig struct {
 	BucketName      string
 }
 
+type leetcodeConfig struct {
+	LeetcodeSession string
+}
+
 var DB dbConfig
 var JWT jwtConfig
 var OSS ossConfig
+var Leetcode leetcodeConfig
 
 func LoadConfig() {
 	// 加载 .env 文件
@@ -54,6 +59,10 @@ func LoadConfig() {
 		AccessKeyID:     getEnv("ALIYUN_ACCESS_KEY", ""),
 		AccessKeySecret: getEnv("ALIYUN_ACCESS_SECRET", ""),
 		BucketName:      getEnv("ALIYUN_OSS_BUCKET_NAME", ""),
+	}
+
+	Leetcode = leetcodeConfig{
+		LeetcodeSession: getEnv("LEETCODE_SESSION", ""),
 	}
 }
 

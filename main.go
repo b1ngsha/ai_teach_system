@@ -17,7 +17,7 @@ func main() {
 	db := utils.InitDB()
 
 	// 定时任务
-	tasksManager := tasks.NewTasksManager(db, services.NewLeetCodeService())
+	tasksManager := tasks.NewTasksManager(db, services.NewLeetCodeService(db))
 	tasksManager.Start()
 	defer tasksManager.Stop()
 
