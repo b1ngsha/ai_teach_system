@@ -8,6 +8,7 @@ import (
 	"ai_teach_system/utils"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,6 +32,7 @@ func setupProblemTest() (*gin.Engine, *gorm.DB, func()) {
 		c.Next()
 	})
 	auth.POST("", problemController.GetProblemList)
+	auth.GET("/:id", problemController.GetProblemDetail)
 	return r, db, cleanup
 }
 
@@ -106,4 +108,60 @@ func TestGetProblemList(t *testing.T) {
 
 	status := models.ProblemStatus(data[0].(map[string]interface{})["status"].(string))
 	assert.Equal(t, userProblem.Status, status)
+}
+
+func TestGetProblemDetail(t *testing.T) {
+	r, db, cleanup := setupProblemTest()
+	defer cleanup()
+
+	user := &models.User{
+		Username:  "testuser",
+		Name:      "Test User",
+		StudentID: "2024001",
+		Class:     "CS-01",
+	}
+	db.Create(user)
+
+	course := &models.Course{
+		Name: "数据结构与算法",
+	}
+	db.Create(course)
+
+	point := &models.KnowledgePoint{
+		Name:     "数组",
+		CourseID: course.ID,
+	}
+	db.Create(point)
+
+	tag := &models.Tag{
+		Name:             "数组操作",
+		KnowledgePointID: point.ID,
+	}
+	db.Create(tag)
+
+	problem := &models.Problem{
+		TitleSlug:  "Two Sum",
+		LeetcodeID: 1,
+		Difficulty: models.ProblemDifficultyEasy,
+	}
+	db.Create(problem)
+	db.Model(problem).Association("Tags").Append(tag)
+
+	req := httptest.NewRequest("GET", "/api/problems"+fmt.Sprintf("/%d", problem.ID), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response utils.Response
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.True(t, response.Result)
+
+	data := response.Data.(map[string]interface{})
+	assert.Equal(t, problem.TitleSlug, data["title_slug"])
+	assert.Equal(t, problem.Difficulty, models.ProblemDifficulty(data["difficulty"].(string)))
+
+	tags := data["tags"].([]interface{})
+	assert.Equal(t, tag.Name, tags[0].(map[string]interface{})["name"])
 }

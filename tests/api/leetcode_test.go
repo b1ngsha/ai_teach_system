@@ -3,10 +3,8 @@ package api_test
 import (
 	"ai_teach_system/controllers"
 	"ai_teach_system/models"
-	"ai_teach_system/services"
 	"ai_teach_system/tests"
 	"ai_teach_system/tests/mocks"
-	"ai_teach_system/utils"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -17,39 +15,6 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestLeetCodeController_GetProblem(t *testing.T) {
-	db, cleanup := tests.SetupTestDB()
-	defer cleanup()
-
-	db.AutoMigrate(&models.Problem{})
-
-	problem := models.Problem{
-		LeetcodeID: 1,
-		Title:      "Two Sum",
-		Difficulty: "Easy",
-	}
-	db.Create(&problem)
-
-	controller := controllers.NewLeetCodeController(db, services.NewLeetCodeService())
-
-	router := gin.Default()
-	router.GET("/problems/:id", controller.GetProblem)
-
-	server := httptest.NewServer(router)
-	defer server.Close()
-
-	var response utils.Response
-	httpClient := resty.New()
-	httpClient.R().SetResult(&response).Get(fmt.Sprintf("%s/problems/1", server.URL))
-
-	resp := response.Data.(map[string]interface{})
-	leetcodeID := int(resp["leetcode_id"].(float64))
-
-	assert.Equal(t, 1, leetcodeID)
-	assert.Equal(t, "Two Sum", resp["title"])
-	assert.Equal(t, "Easy", resp["difficulty"])
-}
 
 func TestLeetCodeController_RunTestCase(t *testing.T) {
 	db, cleanup := tests.SetupTestDB()
