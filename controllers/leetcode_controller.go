@@ -54,8 +54,9 @@ func (c *LeetCodeController) Submit(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
 		return
 	}
+	userID := ctx.GetUint("userID")
 
-	result, err := c.service.Submit(req.Lang, req.LeetcodeQuestionId, req.TypedCode)
+	result, err := c.service.Submit(userID, req.Lang, req.LeetcodeQuestionId, req.TypedCode)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("提交代码失败: %v", err)))
 		return

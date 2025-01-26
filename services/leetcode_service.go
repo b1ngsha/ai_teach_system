@@ -15,7 +15,7 @@ import (
 type LeetCodeServiceInterface interface {
 	FetchAllProblems() ([]*models.Problem, error)
 	RunTestCase(userID uint, questionId string, code string, lang string) (map[string]interface{}, error)
-	Submit(lang string, question_id string, code string) (map[string]interface{}, error)
+	Submit(userID uint, lang string, question_id string, code string) (map[string]interface{}, error)
 	Check(userID uint, runCodeID string) (map[string]interface{}, error)
 }
 
@@ -227,7 +227,7 @@ func (s *LeetCodeService) RunTestCase(userID uint, leetcodeQuestionId string, co
 	return result, nil
 }
 
-func (s *LeetCodeService) Submit(lang string, leetcodeQuestionId string, code string) (map[string]interface{}, error) {
+func (s *LeetCodeService) Submit(userID uint, lang string, leetcodeQuestionId string, code string) (map[string]interface{}, error) {
 	questionIdInt, _ := strconv.Atoi(leetcodeQuestionId)
 	var problem models.Problem
 	s.db.Model(&models.Problem{}).Where("leetcode_id = ?", questionIdInt).First(&problem)
@@ -239,6 +239,7 @@ func (s *LeetCodeService) Submit(lang string, leetcodeQuestionId string, code st
 	var result map[string]interface{}
 	path := fmt.Sprintf("/problems/%s/submit/", problem.TitleSlug)
 	_, err := s.Client.R().
+		SetHeader("Cookie", fmt.Sprintf("LEETCODE_SESSION=%s", config.Leetcode.LeetcodeSession)).
 		SetBody(body).
 		SetResult(&result).
 		Post(path)
@@ -247,8 +248,9 @@ func (s *LeetCodeService) Submit(lang string, leetcodeQuestionId string, code st
 		return nil, err
 	}
 
-	data := result["data"].(map[string]interface{})
-	return data, nil
+	var tryRecord models.UserProblem
+	s.db.Where(models.UserProblem{UserID: userID, ProblemID: problem.ID}).Attrs(models.UserProblem{Status: models.ProblemStatusTried}).FirstOrCreate(&tryRecord)
+	return result, nil
 }
 
 func (s *LeetCodeService) Check(userID uint, runCodeID string) (map[string]interface{}, error) {
