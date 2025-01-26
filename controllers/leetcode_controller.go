@@ -37,22 +37,6 @@ func NewLeetCodeController(db *gorm.DB, service services.LeetCodeServiceInterfac
 	}
 }
 
-func (c *LeetCodeController) GetProblem(ctx *gin.Context) {
-	var problem models.Problem
-	leetcodeID := ctx.Param("id")
-	if leetcodeID == "" {
-		ctx.JSON(http.StatusBadRequest, utils.Error("题目ID不能为空"))
-		return
-	}
-
-	if err := c.db.Preload("Tags").Where("leetcode_id = ?", leetcodeID).First(&problem).Error; err != nil {
-		ctx.JSON(http.StatusNotFound, utils.Error("未找到指定题目"))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, utils.Success(problem))
-}
-
 func (c *LeetCodeController) RunTestCase(ctx *gin.Context) {
 	var req RunTestCaseRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {

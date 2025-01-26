@@ -34,7 +34,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		// LeetCode 相关路由
 		leetcode := auth.Group("/leetcode")
 		{
-			leetcode.GET("/problems/:id", leetcodeController.GetProblem)
 			leetcode.POST("/interpret_solution", leetcodeController.RunTestCase)
 			leetcode.POST("/submit", leetcodeController.Submit)
 		}
@@ -61,6 +60,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		problems := auth.Group("/problems")
 		{
 			problems.POST("", problemController.GetProblemList)
+			problems.GET("/:id", problemController.GetProblemDetail)
 		}
 	}
 
