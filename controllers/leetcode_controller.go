@@ -37,8 +37,9 @@ func (c *LeetCodeController) RunTestCase(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
 		return
 	}
+	userID := ctx.GetUint("userID")
 
-	result, err := c.service.RunTestCase(req.LeetcodeQuestionId, req.TypedCode, req.Lang)
+	result, err := c.service.RunTestCase(userID, req.LeetcodeQuestionId, req.TypedCode, req.Lang)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("运行测试用例失败: %v", err)))
 		return

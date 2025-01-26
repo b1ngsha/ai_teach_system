@@ -14,7 +14,7 @@ import (
 
 type LeetCodeServiceInterface interface {
 	FetchAllProblems() ([]*models.Problem, error)
-	RunTestCase(questionId string, code string, lang string) (map[string]interface{}, error)
+	RunTestCase(userID uint, questionId string, code string, lang string) (map[string]interface{}, error)
 	Submit(lang string, question_id string, code string) (map[string]interface{}, error)
 }
 
@@ -197,7 +197,7 @@ func (s *LeetCodeService) FetchProblemDetail(titleSlug string) (*models.Problem,
 	return problem, nil
 }
 
-func (s *LeetCodeService) RunTestCase(leetcodeQuestionId string, code string, lang string) (map[string]interface{}, error) {
+func (s *LeetCodeService) RunTestCase(userID uint, leetcodeQuestionId string, code string, lang string) (map[string]interface{}, error) {
 	questionIdInt, _ := strconv.Atoi(leetcodeQuestionId)
 	var problem models.Problem
 	s.db.Model(&models.Problem{}).Where("leetcode_id = ?", questionIdInt).First(&problem)
@@ -219,6 +219,9 @@ func (s *LeetCodeService) RunTestCase(leetcodeQuestionId string, code string, la
 	if err != nil {
 		return nil, err
 	}
+
+	var tryRecord models.UserProblem
+	s.db.Where(models.UserProblem{UserID: userID, ProblemID: problem.ID}).Attrs(models.UserProblem{Status: models.ProblemStatusTried}).FirstOrCreate(&tryRecord)
 
 	return result, nil
 }
