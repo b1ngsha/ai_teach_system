@@ -18,7 +18,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	leetcodeService := services.NewLeetCodeService(db)
 	leetcodeController := controllers.NewLeetCodeController(leetcodeService)
 
-	aiService := services.NewAIService()
+	aiService := services.NewAIService(db)
 	aiController := controllers.NewAIController(aiService)
 
 	courseService := services.NewCourseService(db)
@@ -43,6 +43,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		ai := auth.Group("/ai")
 		{
 			ai.POST("/generate_code", aiController.GenerateCode)
+			ai.POST("/correct_code", aiController.CorrectCode)
 		}
 
 		// 用户相关路由
