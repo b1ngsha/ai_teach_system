@@ -44,6 +44,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		{
 			ai.POST("/generate_code", aiController.GenerateCode)
 			ai.POST("/correct_code", aiController.CorrectCode)
+			ai.POST("/analyze_code", aiController.AnalyzeCode)
 		}
 
 		// 用户相关路由

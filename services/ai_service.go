@@ -15,6 +15,7 @@ import (
 type AIServiceInterface interface {
 	GenerateCode(title string, language string, content string, sampleTestCases string) (string, error)
 	CorrectCode(problemID uint, lang string, typedCode string) (string, error)
+	AnalyzeCode(problemID uint, lang string, typedCode string) (string, error)
 }
 
 type AIService struct {
@@ -98,6 +99,43 @@ func (s *AIService) CorrectCode(problemID uint, language string, typedCode strin
 	completion, err := s.client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage("你是一个专业的算法工程师，精通各种编程语言和算法。请生成最优时空复杂度的代码来解决问题。"),
+			openai.UserMessage(prompt),
+		}),
+		Model: openai.F("qwen-plus"),
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("AI service error: %v", err)
+	}
+
+	if len(completion.Choices) == 0 {
+		return "", fmt.Errorf("no response from AI service")
+	}
+
+	return completion.Choices[0].Message.Content, nil
+}
+
+func (s *AIService) AnalyzeCode(problemID uint, language string, typedCode string) (string, error) {
+	var problem models.Problem
+	err := s.db.Model(&models.Problem{}).First(&problem, problemID).Error
+	if err != nil {
+		return "", err
+	}
+
+	prompt := fmt.Sprintf(`作为一个专业的算法工程师，请分析以下错误代码：
+
+题目：%s
+编程语言：%s
+题目内容：%s
+当前已有代码：%s
+
+示例测试用例：
+%v
+
+请生成代码和题目分析，并确保分为两个点进行输出：第一点为指出代码的错误原因（指定标题为“错误分析”）、第二点为分析本题目所涉及的计算机领域的知识点（指定标题为“AI讲师分析”），注意，不要返回正确的代码示例，仅仅进行分析即可`, problem.Title, language, problem.Content, typedCode, problem.SampleTestcases)
+	completion, err := s.client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage("你是一个大学的算法课老师，请对同学们的错误代码片段和对应的题目进行分析。"),
 			openai.UserMessage(prompt),
 		}),
 		Model: openai.F("qwen-plus"),
