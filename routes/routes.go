@@ -57,6 +57,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		courses := auth.Group("/courses")
 		{
 			courses.GET("/:id", courseController.GetCourseDetail)
+			courses.GET("/:id/knowledge_points", courseController.GetKnowledgePoints)
 		}
 
 		// 题库相关路由

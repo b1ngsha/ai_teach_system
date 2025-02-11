@@ -41,3 +41,18 @@ func (c *CourseController) GetCourseDetail(ctx *gin.Context) {
 		"overview":       overview,
 	}))
 }
+
+func (c *CourseController) GetKnowledgePoints(ctx *gin.Context) {
+	courseID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的课程ID"))
+		return
+	}
+
+	points, err := c.courseService.GetKnowledgePoints(uint(courseID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取知识点列表失败: %v", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success(points))
+}
