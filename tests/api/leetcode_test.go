@@ -5,24 +5,41 @@ import (
 	"ai_teach_system/models"
 	"ai_teach_system/tests"
 	"ai_teach_system/tests/mocks"
+	"ai_teach_system/utils"
+	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
-func TestLeetCodeController_RunTestCase(t *testing.T) {
+func setupLeetCodeTest() (*gin.Engine, *gorm.DB, func()) {
+	gin.SetMode(gin.TestMode)
 	db, cleanup := tests.SetupTestDB()
+
+	r := gin.New()
+	mockService := mocks.NewMockLeetCodeService()
+	controller := controllers.NewLeetCodeController(mockService)
+
+	leetcode := r.Group("/api/leetcode")
+	{
+		leetcode.POST("/interpret_solution", controller.RunTestCase)
+		leetcode.POST("/submit", controller.Submit)
+		leetcode.GET("/check/:id", controller.Check)
+	}
+
+	return r, db, cleanup
+}
+
+func TestRunTestCase(t *testing.T) {
+	r, db, cleanup := setupLeetCodeTest()
 	defer cleanup()
 
-	db.AutoMigrate(&models.Problem{})
-
-	// 创建测试题目
+	// Create a test problem
 	problem := models.Problem{
 		LeetcodeID: 1,
 		Title:      "Two Sum",
@@ -30,14 +47,6 @@ func TestLeetCodeController_RunTestCase(t *testing.T) {
 		Difficulty: "Easy",
 	}
 	db.Create(&problem)
-
-	controller := controllers.NewLeetCodeController(db, mocks.NewMockLeetCodeService())
-
-	router := gin.Default()
-	router.POST("/leetcode/interpret_solution", controller.RunTestCase)
-
-	server := httptest.NewServer(router)
-	defer server.Close()
 
 	tests := []struct {
 		name       string
@@ -47,8 +56,8 @@ func TestLeetCodeController_RunTestCase(t *testing.T) {
 		{
 			name: "valid test case",
 			request: controllers.RunTestCaseRequest{
-				QuestionId: "1",
-				Lang:       "javascript",
+				LeetcodeQuestionId: "1",
+				Lang:               "javascript",
 				TypedCode: `var twoSum = function(nums, target) {
 					const map = new Map();
 					for (let i = 0; i < nums.length; i++) {
@@ -60,7 +69,6 @@ func TestLeetCodeController_RunTestCase(t *testing.T) {
 					}
 					return [];
 				};`,
-				DataInput: "[2,7,11,15]\n9",
 			},
 			wantStatus: http.StatusOK,
 		},
@@ -71,24 +79,31 @@ func TestLeetCodeController_RunTestCase(t *testing.T) {
 			jsonData, err := json.Marshal(tt.request)
 			assert.NoError(t, err)
 
-			resp, err := resty.New().R().
-				SetHeader("Content-Type", "application/json").
-				SetBody(jsonData).
-				Post(fmt.Sprintf("%s/leetcode/interpret_solution", server.URL))
+			req := httptest.NewRequest("POST", "/api/leetcode/interpret_solution", bytes.NewBuffer(jsonData))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
 
+			r.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.wantStatus, w.Code)
+
+			var response utils.Response
+			err = json.Unmarshal(w.Body.Bytes(), &response)
 			assert.NoError(t, err)
-			assert.Equal(t, tt.wantStatus, resp.StatusCode())
+			assert.True(t, response.Result)
+
+			if tt.wantStatus == http.StatusOK {
+				assert.Equal(t, "runcode_11223344", response.Data.(map[string]interface{})["interpret_id"])
+			}
 		})
 	}
 }
 
-func TestLeetCodeController_Submit(t *testing.T) {
-	db, cleanup := tests.SetupTestDB()
+func TestSubmit(t *testing.T) {
+	r, db, cleanup := setupLeetCodeTest()
 	defer cleanup()
 
-	db.AutoMigrate(&models.Problem{})
-
-	// 创建测试题目
+	// Create a test problem
 	problem := models.Problem{
 		LeetcodeID: 1,
 		Title:      "Two Sum",
@@ -96,14 +111,6 @@ func TestLeetCodeController_Submit(t *testing.T) {
 		Difficulty: "Easy",
 	}
 	db.Create(&problem)
-
-	controller := controllers.NewLeetCodeController(db, mocks.NewMockLeetCodeService())
-
-	router := gin.Default()
-	router.POST("/leetcode/submit", controller.Submit)
-
-	server := httptest.NewServer(router)
-	defer server.Close()
 
 	tests := []struct {
 		name       string
@@ -113,8 +120,8 @@ func TestLeetCodeController_Submit(t *testing.T) {
 		{
 			name: "valid submission",
 			request: controllers.SubmitRequest{
-				QuestionId: "1",
-				Lang:       "javascript",
+				LeetcodeQuestionId: "1",
+				Lang:               "javascript",
 				TypedCode: `var twoSum = function(nums, target) {
 					const map = new Map();
 					for (let i = 0; i < nums.length; i++) {
@@ -136,13 +143,62 @@ func TestLeetCodeController_Submit(t *testing.T) {
 			jsonData, err := json.Marshal(tt.request)
 			assert.NoError(t, err)
 
-			resp, err := resty.New().R().
-				SetHeader("Content-Type", "application/json").
-				SetBody(jsonData).
-				Post(fmt.Sprintf("%s/leetcode/submit", server.URL))
+			req := httptest.NewRequest("POST", "/api/leetcode/submit", bytes.NewBuffer(jsonData))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
 
+			r.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.wantStatus, w.Code)
+
+			var response utils.Response
+			err = json.Unmarshal(w.Body.Bytes(), &response)
 			assert.NoError(t, err)
-			assert.Equal(t, tt.wantStatus, resp.StatusCode())
+			assert.True(t, response.Result)
+
+			if tt.wantStatus == http.StatusOK {
+				assert.Equal(t, float64(594247274), response.Data.(map[string]interface{})["submission_id"])
+			}
+		})
+	}
+}
+
+func TestCheck(t *testing.T) {
+	r, _, cleanup := setupLeetCodeTest()
+	defer cleanup()
+
+	tests := []struct {
+		name       string
+		runCodeID  string
+		wantStatus int
+		wantResult bool
+	}{
+		{
+			name:       "valid check",
+			runCodeID:  "runcode_1737896487.348871_X8Uj2Q8p6H",
+			wantStatus: http.StatusOK,
+			wantResult: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/api/leetcode/check/"+tt.runCodeID, nil)
+			w := httptest.NewRecorder()
+
+			r.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.wantStatus, w.Code)
+
+			var response utils.Response
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantResult, response.Result)
+
+			if tt.wantStatus == http.StatusOK {
+				data := response.Data.(map[string]interface{})
+				assert.Equal(t, "SUCCESS", data["state"])
+			}
 		})
 	}
 }
