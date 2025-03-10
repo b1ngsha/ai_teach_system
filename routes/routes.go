@@ -9,6 +9,8 @@ import (
 )
 
 func SetupRoutes(r *gin.Engine, db *gorm.DB) {
+	r.Use(CORSMiddleware())
+
 	api := r.Group("/api")
 
 	userService := services.NewUserService(db)
