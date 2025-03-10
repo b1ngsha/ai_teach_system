@@ -1,4 +1,4 @@
-FROM golang:1.23.3
+FROM anolis-registry.cn-zhangjiakou.cr.aliyuncs.com/openanolis/golang:1.20.12-23
 
 WORKDIR /app
 
@@ -10,8 +10,10 @@ COPY . .
 
 RUN go build -o main .
 
-RUN go build -o sync cmd/sync
+RUN go build -o sync ./cmd/sync
 
 COPY entrypoint.sh .
+
+RUN chmod +x entrypoint.sh
 
 CMD ["./entrypoint.sh"]

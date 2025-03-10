@@ -23,7 +23,7 @@ services:
       - db
 
   db:
-    image: mysql:8.0.37
+    image: anolis-registry.cn-zhangjiakou.cr.aliyuncs.com/openanolis/mysql:8.0.30-8.6
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}

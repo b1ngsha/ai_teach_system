@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	"gorm.io/gorm"
@@ -101,7 +102,10 @@ func (s *LeetCodeService) FetchAllProblems() ([]*models.Problem, error) {
 			return nil, err
 		}
 
-		data := result["data"].(map[string]interface{})
+		data, ok := result["data"].(map[string]interface{})
+		if !ok {
+			log.Printf("%v", result["data"])
+		}
 		problemList := data["problemsetQuestionList"].(map[string]interface{})
 		questions := problemList["questions"].([]interface{})
 		hasMore = problemList["hasMore"].(bool)
@@ -130,6 +134,8 @@ func (s *LeetCodeService) FetchAllProblems() ([]*models.Problem, error) {
 		}
 
 		log.Printf("已获取 %d 题，当前页 %d 条记录，是否还有更多：%v", len(problems), len(questions), hasMore)
+
+		time.Sleep(3 * time.Second)
 
 		skip += pageSize
 	}
