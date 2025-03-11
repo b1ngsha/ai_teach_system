@@ -36,44 +36,44 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		// LeetCode 相关路由
 		leetcode := auth.Group("/leetcode")
 		{
-			leetcode.POST("/interpret_solution", leetcodeController.RunTestCase)
-			leetcode.POST("/submit", leetcodeController.Submit)
-			leetcode.GET("/check/:id", leetcodeController.Check)
+			leetcode.POST("/interpret_solution/", leetcodeController.RunTestCase)
+			leetcode.POST("/submit/", leetcodeController.Submit)
+			leetcode.GET("/check/:id/", leetcodeController.Check)
 		}
 
 		// AI 相关路由
 		ai := auth.Group("/ai")
 		{
-			ai.POST("/generate_code", aiController.GenerateCode)
-			ai.POST("/correct_code", aiController.CorrectCode)
-			ai.POST("/analyze_code", aiController.AnalyzeCode)
+			ai.POST("/generate_code/", aiController.GenerateCode)
+			ai.POST("/correct_code/", aiController.CorrectCode)
+			ai.POST("/analyze_code/", aiController.AnalyzeCode)
 		}
 
 		// 用户相关路由
 		users := auth.Group("/users")
 		{
-			users.GET("", userController.GetUserInfo)
+			users.GET("/", userController.GetUserInfo)
 		}
 
 		// 课程相关路由
 		courses := auth.Group("/courses")
 		{
-			courses.GET("/:id", courseController.GetCourseDetail)
-			courses.GET("/:id/knowledge_points", courseController.GetKnowledgePoints)
+			courses.GET("/:id/", courseController.GetCourseDetail)
+			courses.GET("/:id/knowledge_points/", courseController.GetKnowledgePoints)
 		}
 
 		// 题库相关路由
 		problems := auth.Group("/problems")
 		{
-			problems.POST("", problemController.GetProblemList)
-			problems.GET("/:id", problemController.GetProblemDetail)
+			problems.POST("/", problemController.GetProblemList)
+			problems.GET("/:id/", problemController.GetProblemDetail)
 		}
 	}
 
 	// 用户相关路由
 	users := api.Group("/users")
 	{
-		users.POST("/login", userController.Login)
-		users.POST("/register", userController.Register)
+		users.POST("/login/", userController.Login)
+		users.POST("/register/", userController.Register)
 	}
 }
