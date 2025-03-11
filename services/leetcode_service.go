@@ -149,6 +149,7 @@ func (s *LeetCodeService) FetchProblemDetail(titleSlug string) (*models.Problem,
 		question(titleSlug: $titleSlug) {
 			questionId
 			title
+			translatedTitle
 			titleSlug
 			content
 			difficulty
