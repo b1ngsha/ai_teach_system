@@ -195,6 +195,7 @@ func (s *LeetCodeService) FetchProblemDetail(titleSlug string) (*models.Problem,
 	problem := &models.Problem{
 		LeetcodeID:      leetcodeID,
 		Title:           question["title"].(string),
+		TitleCn:         question["translatedTitle"].(string),
 		TitleSlug:       titleSlug,
 		Difficulty:      models.ProblemDifficulty(question["difficulty"].(string)),
 		Content:         content,

@@ -12,6 +12,7 @@ type Problem struct {
 	ID              uint              `gorm:"primarykey"`
 	LeetcodeID      int               `json:"leetcode_id" gorm:"unique;not null"`
 	Title           string            `json:"title" gorm:"not null"`
+	TitleCn         string            `json:"title_cn" gorm:"not null"`
 	TitleSlug       string            `json:"title_slug" gorm:"not null"`
 	Difficulty      ProblemDifficulty `json:"difficulty" gorm:"type:ENUM('Easy', 'Medium', 'Hard')"`
 	Content         string            `json:"content" gorm:"type:text"`

@@ -17,7 +17,7 @@ func NewProblemService(db *gorm.DB) *ProblemService {
 func (s *ProblemService) GetProblemList(userID uint, difficulty models.ProblemDifficulty, knowledgePointID uint) ([]map[string]interface{}, error) {
 	problems := make([]map[string]interface{}, 0, 10)
 	query := s.db.Model(&models.Problem{}).
-		Select("problems.id, leetcode_id, title_slug, difficulty").
+		Select("problems.id, leetcode_id, title_slug, title_cn, difficulty").
 		Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
 		Joins("JOIN tags ON problem_tag.tag_id = tags.id")
 	if knowledgePointID != 0 {
