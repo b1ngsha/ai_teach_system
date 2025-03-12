@@ -122,7 +122,7 @@ func (s *AIService) AnalyzeCode(problemID uint, language string, typedCode strin
 		return "", err
 	}
 
-	prompt := fmt.Sprintf(`作为一个专业的算法工程师，请分析以下错误代码：
+	prompt := fmt.Sprintf(`你是一个大学算法课的老师，请分析以下错误代码：
 
 题目：%s
 编程语言：%s
@@ -132,7 +132,17 @@ func (s *AIService) AnalyzeCode(problemID uint, language string, typedCode strin
 示例测试用例：
 %v
 
-请生成代码和题目分析，并确保分为两个点进行输出：第一点为指出代码的错误原因（指定标题为“错误分析”）、第二点为分析本题目所涉及的计算机领域的知识点（指定标题为“AI讲师分析”），注意，不要返回正确的代码示例，仅仅进行分析即可`, problem.Title, language, problem.Content, typedCode, problem.SampleTestcases)
+请生成代码和题目分析，并确保分为两个点进行输出：
+第一点为指出代码的错误原因（指定标题为“错误分析”）、
+第二点为分析本题目所涉及的计算机领域的知识点（指定标题为“AI讲师分析”），
+注意，不要返回正确的代码示例，仅仅进行分析即可。
+
+同时，请一定确保你生成的响应格式如下（在花括号内填入具体的内容）：
+**错误分析**：
+{错误分析}
+
+**AI讲师分析**：
+{AI讲师分析}`, problem.Title, language, problem.Content, typedCode, problem.SampleTestcases)
 	completion, err := s.client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage("你是一个大学的算法课老师，请对同学们的错误代码片段和对应的题目进行分析。"),
