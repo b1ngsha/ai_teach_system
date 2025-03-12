@@ -56,7 +56,7 @@ func TestRunTestCase(t *testing.T) {
 		{
 			name: "valid test case",
 			request: controllers.RunTestCaseRequest{
-				LeetcodeQuestionId: "1",
+				LeetcodeQuestionId: 1,
 				Lang:               "javascript",
 				TypedCode: `var twoSum = function(nums, target) {
 					const map = new Map();
@@ -120,7 +120,7 @@ func TestSubmit(t *testing.T) {
 		{
 			name: "valid submission",
 			request: controllers.SubmitRequest{
-				LeetcodeQuestionId: "1",
+				LeetcodeQuestionId: 1,
 				Lang:               "javascript",
 				TypedCode: `var twoSum = function(nums, target) {
 					const map = new Map();

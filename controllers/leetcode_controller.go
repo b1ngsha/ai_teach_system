@@ -15,13 +15,13 @@ type LeetCodeController struct {
 
 type RunTestCaseRequest struct {
 	Lang               string `json:"lang"`
-	LeetcodeQuestionId string `json:"leetcode_question_id"`
+	LeetcodeQuestionId int    `json:"leetcode_question_id"`
 	TypedCode          string `json:"typed_code"`
 }
 
 type SubmitRequest struct {
 	Lang               string `json:"lang"`
-	LeetcodeQuestionId string `json:"leetcode_question_id"`
+	LeetcodeQuestionId int    `json:"leetcode_question_id"`
 	TypedCode          string `json:"typed_code"`
 }
 

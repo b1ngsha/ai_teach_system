@@ -15,8 +15,8 @@ import (
 
 type LeetCodeServiceInterface interface {
 	FetchAllProblems() ([]*models.Problem, error)
-	RunTestCase(userID uint, questionId string, code string, lang string) (map[string]interface{}, error)
-	Submit(userID uint, lang string, question_id string, code string) (map[string]interface{}, error)
+	RunTestCase(userID uint, questionId int, code string, lang string) (map[string]interface{}, error)
+	Submit(userID uint, lang string, question_id int, code string) (map[string]interface{}, error)
 	Check(userID uint, runCodeID string) (map[string]interface{}, error)
 }
 
@@ -206,11 +206,10 @@ func (s *LeetCodeService) FetchProblemDetail(titleSlug string) (*models.Problem,
 	return problem, nil
 }
 
-func (s *LeetCodeService) RunTestCase(userID uint, leetcodeQuestionId string, code string, lang string) (map[string]interface{}, error) {
-	questionIdInt, _ := strconv.Atoi(leetcodeQuestionId)
+func (s *LeetCodeService) RunTestCase(userID uint, leetcodeQuestionId int, code string, lang string) (map[string]interface{}, error) {
 	var problem models.Problem
-	s.db.Model(&models.Problem{}).Where("leetcode_id = ?", questionIdInt).First(&problem)
-	body := &map[string]string{
+	s.db.Model(&models.Problem{}).Where("leetcode_id = ?", leetcodeQuestionId).First(&problem)
+	body := &map[string]interface{}{
 		"data_input":  problem.SampleTestcases,
 		"lang":        lang,
 		"question_id": leetcodeQuestionId,
@@ -235,11 +234,10 @@ func (s *LeetCodeService) RunTestCase(userID uint, leetcodeQuestionId string, co
 	return result, nil
 }
 
-func (s *LeetCodeService) Submit(userID uint, lang string, leetcodeQuestionId string, code string) (map[string]interface{}, error) {
-	questionIdInt, _ := strconv.Atoi(leetcodeQuestionId)
+func (s *LeetCodeService) Submit(userID uint, lang string, leetcodeQuestionId int, code string) (map[string]interface{}, error) {
 	var problem models.Problem
-	s.db.Model(&models.Problem{}).Where("leetcode_id = ?", questionIdInt).First(&problem)
-	body := &map[string]string{
+	s.db.Model(&models.Problem{}).Where("leetcode_id = ?", leetcodeQuestionId).First(&problem)
+	body := &map[string]interface{}{
 		"lang":        lang,
 		"question_id": leetcodeQuestionId,
 		"typed_code":  code,
