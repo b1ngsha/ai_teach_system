@@ -16,6 +16,14 @@ func main() {
 
 	db := utils.InitDB()
 
+	// 初始化管理员账户
+	userService := services.NewUserService(db)
+	if err := userService.CreateAdminIfNotExists(); err != nil {
+		log.Printf("创建管理员账户失败: %v", err)
+	} else {
+		log.Println("管理员账户检查完成")
+	}
+
 	// 定时任务
 	tasksManager := tasks.NewTasksManager(db, services.NewLeetCodeService(db))
 	tasksManager.Start()

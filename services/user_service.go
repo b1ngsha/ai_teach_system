@@ -1,13 +1,10 @@
 package services
 
 import (
-	"ai_teach_system/config"
 	"ai_teach_system/models"
+	"ai_teach_system/utils"
 	"errors"
 
-	"time"
-
-	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 )
 
@@ -33,18 +30,12 @@ func (s *UserService) Login(studentID string, password string) (string, error) {
 	}
 
 	// 生成 JWT token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id":  user.ID,
-		"username": user.Username,
-		"exp":      time.Now().Add(time.Hour * 24).Unix(),
-	})
-
-	tokenString, err := token.SignedString([]byte(config.JWT.SecretKey))
+	token, err := utils.GenerateToken(user.ID, user.Username, user.Role)
 	if err != nil {
 		return "", err
 	}
 
-	return tokenString, nil
+	return token, nil
 }
 
 func (s *UserService) Register(username string, password string, name string, studentId string, class string, avatar string) (*models.User, error) {
@@ -96,4 +87,24 @@ func (s *UserService) GetUserInfo(userID uint) (map[string]interface{}, error) {
 		"learn_progress":  completionRate,
 		"solved_problems": solvedProblems,
 	}, nil
+}
+
+func (s *UserService) CreateAdminIfNotExists() error {
+	var count int64
+	s.db.Model(&models.User{}).Where("role = ?", models.RoleAdmin).Count(&count)
+
+	if count > 0 {
+		return nil
+	}
+
+	admin := models.User{
+		Username:  "admin",
+		Password:  "szu_admin",
+		Name:      "系统管理员",
+		StudentID: "admin",
+		Class:     "管理员",
+		Role:      models.RoleAdmin,
+	}
+
+	return s.db.Create(&admin).Error
 }

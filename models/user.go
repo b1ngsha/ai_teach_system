@@ -5,6 +5,13 @@ import (
 	"gorm.io/gorm"
 )
 
+type Role string
+
+const (
+	RoleUser  Role = "USER"
+	RoleAdmin Role = "ADMIN"
+)
+
 type User struct {
 	gorm.Model
 	Avatar    string    `json:"avatar"`
@@ -13,6 +20,7 @@ type User struct {
 	StudentID string    `json:"student_id" gorm:"unique;not null"`
 	Class     string    `json:"class"`
 	Password  string    `json:"-"`
+	Role      Role      `json:"role" gorm:"type:ENUM('USER', 'ADMIN');default:'USER'"`
 	Problems  []Problem `json:"-" gorm:"many2many:user_problems;"`
 }
 

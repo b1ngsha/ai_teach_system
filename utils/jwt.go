@@ -2,6 +2,7 @@ package utils
 
 import (
 	"ai_teach_system/config"
+	"ai_teach_system/models"
 	"errors"
 	"time"
 
@@ -9,12 +10,13 @@ import (
 )
 
 type Claims struct {
-	UserID   uint   `json:"user_id"`
-	Username string `json:"username"`
+	UserID   uint        `json:"user_id"`
+	Username string      `json:"username"`
+	Role     models.Role `json:"role"`
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userID uint, username string) (string, error) {
+func GenerateToken(userID uint, username string, role models.Role) (string, error) {
 	secretKey := []byte(config.JWT.SecretKey)
 	if len(secretKey) == 0 {
 		return "", errors.New("JWT secret key not set")
@@ -23,6 +25,7 @@ func GenerateToken(userID uint, username string) (string, error) {
 	claims := Claims{
 		UserID:   userID,
 		Username: username,
+		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
