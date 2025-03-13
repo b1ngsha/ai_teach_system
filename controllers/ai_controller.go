@@ -45,6 +45,12 @@ type AnalyzeCodeRequest struct {
 	TypedCode string `json:"typed_code" binding:"required"`
 }
 
+type ChatRequest struct {
+	ProblemID uint   `json:"problem_id" binding:"required"`
+	Question  string `json:"question" binding:"required"`
+	TypedCode string `json:"typed_code" binding:"required"`
+}
+
 func (c *AIController) GenerateCode(ctx *gin.Context) {
 	var req GenerateCodeRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -93,6 +99,23 @@ func (c *AIController) AnalyzeCode(ctx *gin.Context) {
 	message, err := c.Service.AnalyzeCode(req.ProblemID, req.Language, req.TypedCode)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("生成代码失败: %v", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success(gin.H{
+		"message": message,
+	}))
+}
+
+func (c *AIController) Chat(ctx *gin.Context) {
+	var req ChatRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
+		return
+	}
+
+	message, err := c.Service.Chat(req.ProblemID, req.TypedCode, req.Question)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("问答异常: %v", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success(gin.H{

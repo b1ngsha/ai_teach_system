@@ -27,6 +27,7 @@ func setupAITest() (*gin.Engine, *mocks.MockAIService) {
 	r.POST("/api/ai/generate-code", controller.GenerateCode)
 	r.POST("/api/ai/correct-code", controller.CorrectCode)
 	r.POST("/api/ai/analyze-code", controller.AnalyzeCode)
+	r.POST("/api/ai/chat", controller.Chat)
 
 	return r, mockService
 }
@@ -220,6 +221,75 @@ func TestAnalyzeCode(t *testing.T) {
 			assert.NoError(t, err)
 
 			req := httptest.NewRequest("POST", "/api/ai/analyze-code", bytes.NewBuffer(jsonData))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			r.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.wantStatus, w.Code)
+
+			var response utils.Response
+			err = json.Unmarshal(w.Body.Bytes(), &response)
+
+			if tt.wantError {
+				assert.False(t, response.Result)
+			} else {
+				assert.NoError(t, err)
+				assert.True(t, response.Result)
+				assert.Empty(t, response.Message)
+
+				data := response.Data.(map[string]interface{})
+				assert.NotEmpty(t, data["message"])
+				assert.Equal(t, tt.mockMessage, data["message"])
+			}
+		})
+	}
+}
+
+func TestChat(t *testing.T) {
+	r, _ := setupAITest()
+
+	tests := []struct {
+		name        string
+		request     controllers.ChatRequest
+		mockMessage string
+		mockError   error
+		wantStatus  int
+		wantError   bool
+	}{
+		{
+			name: "successful question answering",
+			request: controllers.ChatRequest{
+				ProblemID: 1,
+				TypedCode: "def twoSum(nums, target): pass",
+				Question:  "这道题目的核心思想是什么？",
+			},
+			mockMessage: `这道题目是经典的"两数之和"问题，需要在数组中找到两个数，使它们的和等于目标值。
+
+关于你的问题，这道题的核心思想是使用哈希表来降低时间复杂度。传统的暴力解法需要O(n²)的时间复杂度，而使用哈希表可以将时间复杂度降低到O(n)。
+
+哈希表的作用是记录已经遍历过的元素及其索引，这样当我们遍历到一个新元素时，可以在O(1)的时间内查找是否存在一个已经遍历过的元素，使得两者之和等于目标值。`,
+			wantStatus: http.StatusOK,
+			wantError:  false,
+		},
+		{
+			name: "missing required fields",
+			request: controllers.ChatRequest{
+				ProblemID: 1,
+				TypedCode: "def twoSum(nums, target): pass",
+				// Question field missing
+			},
+			wantStatus: http.StatusBadRequest,
+			wantError:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			jsonData, err := json.Marshal(tt.request)
+			assert.NoError(t, err)
+
+			req := httptest.NewRequest("POST", "/api/ai/chat", bytes.NewBuffer(jsonData))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 

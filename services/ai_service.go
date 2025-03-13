@@ -16,6 +16,7 @@ type AIServiceInterface interface {
 	GenerateCode(title string, language string, content string, sampleTestCases string) (string, error)
 	CorrectCode(problemID uint, lang string, typedCode string) (string, error)
 	AnalyzeCode(problemID uint, lang string, typedCode string) (string, error)
+	Chat(problemID uint, typedCode string, question string) (string, error)
 }
 
 type AIService struct {
@@ -146,6 +147,44 @@ func (s *AIService) AnalyzeCode(problemID uint, language string, typedCode strin
 	completion, err := s.client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage("你是一个大学的算法课老师，请对同学们的错误代码片段和对应的题目进行分析。"),
+			openai.UserMessage(prompt),
+		}),
+		Model: openai.F("qwen-plus"),
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("AI service error: %v", err)
+	}
+
+	if len(completion.Choices) == 0 {
+		return "", fmt.Errorf("no response from AI service")
+	}
+
+	return completion.Choices[0].Message.Content, nil
+}
+
+func (s *AIService) Chat(problemID uint, typedCode string, question string) (string, error) {
+	var problem models.Problem
+	err := s.db.Model(&models.Problem{}).First(&problem, problemID).Error
+	if err != nil {
+		return "", err
+	}
+
+	prompt := fmt.Sprintf(`你是一个大学算法课的AI助教，请基于以下题目信息，回答学生的问题：
+
+题目：%s
+题目内容：%s
+示例测试用例：
+%v
+
+学生问题：%s
+学生当前代码：%s
+
+请提供专业、准确、有教育意义的回答，帮助学生理解题目和相关知识点。`, problem.Title, problem.Content, problem.SampleTestcases, typedCode, question)
+
+	completion, err := s.client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage("你是一个大学算法课的AI助教，你的任务是帮助学生理解算法题目，解答他们的疑问，并提供有教育意义的指导。"),
 			openai.UserMessage(prompt),
 		}),
 		Model: openai.F("qwen-plus"),
