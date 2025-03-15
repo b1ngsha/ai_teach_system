@@ -22,3 +22,12 @@ func (s *ClassService) GetClassList() ([]string, error) {
 	}
 	return classNames, nil
 }
+
+func (s *ClassService) AddClass(className string) (*models.Class, error) {
+	class := models.Class{Name: className}
+	err := s.db.Model(&models.Class{}).Create(&class).Error
+	if err != nil {
+		return nil, err
+	}
+	return &class, nil
+}

@@ -78,6 +78,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		classes := auth.Group("/classes")
 		{
 			classes.GET("/", classController.GetClassList)
+			classes.POST("/", classController.AddClass)
 		}
 	}
 
