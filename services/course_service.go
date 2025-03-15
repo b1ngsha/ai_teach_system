@@ -3,6 +3,7 @@ package services
 import (
 	"ai_teach_system/models"
 	"errors"
+	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -236,4 +237,56 @@ func (s *CourseService) GetUserListByCourseAndClass(classID uint, courseID uint)
 		})
 	}
 	return result, nil
+}
+
+func (s *CourseService) AddCourse(courseName string, pointNames []string) (map[string]interface{}, error) {
+	// 检查课程是否已存在
+	var courseCount int64
+	err := s.db.Model(&models.Course{}).Where("name = ?", courseName).Count(&courseCount).Error
+	if err != nil {
+		return nil, err
+	}
+	if courseCount > 0 {
+		return nil, fmt.Errorf("课程: %s已存在", courseName)
+	}
+
+	// 开启事务
+	course := models.Course{Name: courseName}
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// 创建课程
+		err = s.db.Model(&models.Course{}).Create(&course).Error
+		if err != nil {
+			return err
+		}
+
+		// 创建关联的知识点
+		knowledgePoints := make([]models.KnowledgePoint, len(pointNames))
+		for i, name := range pointNames {
+			knowledgePoint := models.KnowledgePoint{
+				Name:     name,
+				CourseID: course.ID,
+				Course:   course,
+			}
+			knowledgePoints[i] = knowledgePoint
+		}
+		err = s.db.Model(&models.KnowledgePoint{}).Create(&knowledgePoints).Error
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// 重新加载课程数据，包括知识点
+	if err := s.db.Preload("Points").First(&course, course.ID).Error; err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"course_id":   course.ID,
+		"course_name": course.Name,
+		"points":      course.Points,
+	}, nil
 }

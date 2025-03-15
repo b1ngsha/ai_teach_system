@@ -10,6 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type AddCourseRequest struct {
+	CourseName          string   `json:"course_name"`
+	KnowledgePointNames []string `json:"knowledge_point_names"`
+}
+
 type CourseController struct {
 	courseService *services.CourseService
 }
@@ -85,4 +90,18 @@ func (c *CourseController) GetUserListByCourseAndClass(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success(result))
+}
+
+func (c *CourseController) AddCourse(ctx *gin.Context) {
+	var req AddCourseRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
+		return
+	}
+	course, err := c.courseService.AddCourse(req.CourseName, req.KnowledgePointNames)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("创建课程失败: %v", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success(course))
 }
