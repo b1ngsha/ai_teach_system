@@ -65,6 +65,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			courses.GET("/:id/", courseController.GetCourseDetail)
 			courses.GET("/:id/knowledge_points/", courseController.GetKnowledgePoints)
 			courses.GET("/", courseController.GetCourseList)
+			courses.GET("/users/:course_id/:class_id/", courseController.GetUserListByCourseAndClass)
 		}
 
 		// 题库相关路由

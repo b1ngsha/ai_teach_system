@@ -67,3 +67,22 @@ func (c *CourseController) GetCourseList(ctx *gin.Context) {
 		"course_names": courseNames,
 	}))
 }
+
+func (c *CourseController) GetUserListByCourseAndClass(ctx *gin.Context) {
+	courseID, err := strconv.ParseUint(ctx.Param("course_id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的课程ID"))
+		return
+	}
+	classID, err := strconv.ParseUint(ctx.Param("class_id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的班级ID"))
+		return
+	}
+	result, err := c.courseService.GetUserListByCourseAndClass(uint(classID), uint(courseID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("查询学生列表失败: %v", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success(result))
+}

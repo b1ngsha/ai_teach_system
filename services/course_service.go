@@ -181,3 +181,59 @@ func (s *CourseService) GetCourseList() ([]string, error) {
 	}
 	return courseNames, nil
 }
+
+func (s *CourseService) GetUserListByCourseAndClass(classID uint, courseID uint) ([]map[string]interface{}, error) {
+	// 查询当前班级的用户列表
+	var userList []models.User
+	err := s.db.Model(&models.User{}).Where("class_id = ?", classID).Find(&userList).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 查询每个用户的答题数据
+	result := make([]map[string]interface{}, len(userList))
+	for _, user := range userList {
+		var solvedCount, wrongCount int64
+		// 查询作答正确数量
+		err := s.db.Model(&models.UserProblem{}).
+			Where("user_id = ? AND course_id = ? AND status = ?", user.ID, courseID, models.ProblemStatusSolved).
+			Count(&solvedCount).
+			Error
+		if err != nil {
+			return nil, err
+		}
+
+		// 查询作答错误数量
+		err = s.db.Model(&models.UserProblem{}).
+			Where("user_id = ? AND course_id = ? AND status = ?", user.ID, courseID, models.ProblemStatusTried).
+			Count(&wrongCount).
+			Error
+		if err != nil {
+			return nil, err
+		}
+
+		// 正确率
+		correctRate := float64(solvedCount) / float64(solvedCount+wrongCount) * 100
+
+		// 进度
+		var totalProblemCount int64
+		err = s.db.Model(&models.CourseProblem{}).
+			Where("course_id = ?", courseID).
+			Count(&totalProblemCount).
+			Error
+		progress := float64(solvedCount) / float64(totalProblemCount) * 100
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, map[string]interface{}{
+			"student_id":   user.StudentID,
+			"name":         user.Name,
+			"solved_count": solvedCount,
+			"wrong_count":  wrongCount,
+			"correct_rate": correctRate,
+			"progress":     progress,
+		})
+	}
+	return result, nil
+}
