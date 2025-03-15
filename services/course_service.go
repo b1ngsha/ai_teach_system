@@ -172,3 +172,12 @@ func (s *CourseService) GetKnowledgePoints(courseID uint) ([]map[string]interfac
 	}
 	return points, nil
 }
+
+func (s *CourseService) GetCourseList() ([]string, error) {
+	var courseNames []string
+	err := s.db.Model(&models.Course{}).Select("name").Find(&courseNames).Error
+	if err != nil {
+		return nil, err
+	}
+	return courseNames, nil
+}

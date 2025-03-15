@@ -56,3 +56,14 @@ func (c *CourseController) GetKnowledgePoints(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, utils.Success(points))
 }
+
+func (c *CourseController) GetCourseList(ctx *gin.Context) {
+	courseNames, err := c.courseService.GetCourseList()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取课程列表失败: %v", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success(gin.H{
+		"course_names": courseNames,
+	}))
+}
