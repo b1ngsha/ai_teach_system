@@ -39,11 +39,16 @@ func TestGetCourseDetail(t *testing.T) {
 	r, db, cleanup := setupCourseTest()
 	defer cleanup()
 
+	class := &models.Class{
+		Name: "test_class",
+	}
+
 	user := &models.User{
 		Username:  "testuser",
 		Name:      "Test User",
 		StudentID: "2024001",
-		Class:     "CS-01",
+		Class:     *class,
+		ClassID:   class.ID,
 	}
 	db.Create(user)
 

@@ -4,6 +4,7 @@ import (
 	"ai_teach_system/models"
 	"ai_teach_system/utils"
 	"errors"
+	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -38,19 +39,28 @@ func (s *UserService) Login(studentID string, password string) (string, error) {
 	return token, nil
 }
 
-func (s *UserService) Register(username string, password string, name string, studentId string, class string, avatar string) (*models.User, error) {
+func (s *UserService) Register(username string, password string, name string, studentId string, className string, avatar string) (*models.User, error) {
 	var count int64
 	s.db.Model(&models.User{}).Where("username = ?", username).Or("student_id = ?", studentId).Or("name = ?", name).Count(&count)
 	if count > 0 {
 		return nil, errors.New("用户已存在")
 	}
 
+	var classCount int64
+	var class models.Class
+	s.db.Model(&models.Class{}).Where("name = ?", className).Find(&class).Count(&classCount)
+	if count == 0 {
+		return nil, errors.New(fmt.Sprintf("请先创建班级: %s", className))
+	}
+
+	s.db.Model(&models.Class{}).Where("name = ")
 	user := models.User{
 		Username:  username,
 		Password:  password,
 		Name:      name,
 		StudentID: studentId,
 		Class:     class,
+		ClassID:   class.ID,
 		Avatar:    avatar,
 	}
 
@@ -102,7 +112,6 @@ func (s *UserService) CreateAdminIfNotExists() error {
 		Password:  "szu_admin",
 		Name:      "系统管理员",
 		StudentID: "admin",
-		Class:     "管理员",
 		Role:      models.RoleAdmin,
 	}
 

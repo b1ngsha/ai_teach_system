@@ -240,12 +240,17 @@ func TestGetUserProgress(t *testing.T) {
 	r, db, cleanup := setupUserTest()
 	defer cleanup()
 
+	class := &models.Class{
+		Name: "test_class",
+	}
+
 	user := &models.User{
 		Username:  "testuser",
 		Avatar:    "https://example.com/avatar.jpg",
 		Name:      "Test User",
 		StudentID: "2024001",
-		Class:     "CS-01",
+		Class:     *class,
+		ClassID:   class.ID,
 	}
 	db.Create(user)
 

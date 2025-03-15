@@ -18,10 +18,11 @@ type User struct {
 	Username  string    `json:"username" gorm:"unique;not null"`
 	Name      string    `json:"name" gorm:"unique;not null"`
 	StudentID string    `json:"student_id" gorm:"unique;not null"`
-	Class     string    `json:"class"`
 	Password  string    `json:"-"`
 	Role      Role      `json:"role" gorm:"type:ENUM('USER', 'ADMIN');default:'USER'"`
 	Problems  []Problem `json:"-" gorm:"many2many:user_problems;"`
+	Class     Class     `json:"class,omitempty" gorm:"foreignKey:ClassID"`
+	ClassID   uint      `json:"class_id" gorm:"index"`
 }
 
 func (u *User) BeforeSave(tx *gorm.DB) error {
