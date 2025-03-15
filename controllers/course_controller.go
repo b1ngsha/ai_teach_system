@@ -15,6 +15,11 @@ type AddCourseRequest struct {
 	KnowledgePointNames []string `json:"knowledge_point_names"`
 }
 
+type SetCourseProblemsRequest struct {
+	CourseID    uint   `json:"course_id"`
+	ProblemsIDs []uint `json:"problem_ids"`
+}
+
 type CourseController struct {
 	courseService *services.CourseService
 }
@@ -104,4 +109,18 @@ func (c *CourseController) AddCourse(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success(course))
+}
+
+func (c *CourseController) SetCourseProblems(ctx *gin.Context) {
+	var req SetCourseProblemsRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
+		return
+	}
+	result, err := c.courseService.SetCourseProblems(req.CourseID, req.ProblemsIDs)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("设置课程题目失败: %v", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success(result))
 }

@@ -290,3 +290,94 @@ func (s *CourseService) AddCourse(courseName string, pointNames []string) (map[s
 		"points":      course.Points,
 	}, nil
 }
+
+func (s *CourseService) SetCourseProblems(course_id uint, problemIDs []uint) (map[string]interface{}, error) {
+	// 先查出原来选中的题目
+	var existProblemIDs []uint
+	err := s.db.Select("problem_id").
+		Model(&models.CourseProblem{}).
+		Where("course_id = ?", course_id).
+		Scan(&existProblemIDs).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 存到map里提高查询效率
+	existProblemIDMap := make(map[uint]int)
+	for _, problemID := range existProblemIDs {
+		existProblemIDMap[problemID] = 1
+	}
+	newProblemIDMap := make(map[uint]int)
+	for _, id := range problemIDs {
+		newProblemIDMap[id] = 1
+	}
+
+	// 考虑三种情况:
+	// 新旧集合中都存在的保持不变
+	// 新集合中存在旧集合中不存在则新增
+	// 旧集合中存在新集合中不存在则删除
+	createList := make([]uint, 0)
+	deleteList := make([]uint, 0)
+
+	// 找出需要新增的题目
+	for _, id := range problemIDs {
+		if _, exist := existProblemIDMap[id]; !exist {
+			createList = append(createList, id)
+		}
+	}
+
+	// 找出需要删除的题目
+	for _, id := range existProblemIDs {
+		if _, exist := newProblemIDMap[id]; !exist {
+			deleteList = append(deleteList, id)
+		}
+	}
+
+	// 开事务处理创建和删除操作
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		if len(createList) > 0 {
+			courseProblems := make([]models.CourseProblem, 0, len(createList))
+			for _, problemID := range createList {
+				courseProblems = append(courseProblems, models.CourseProblem{
+					CourseID:  course_id,
+					ProblemID: problemID,
+				})
+			}
+
+			if err := tx.Create(&courseProblems).Error; err != nil {
+				return err
+			}
+		}
+
+		if len(deleteList) > 0 {
+			if err := tx.Where("course_id = ? AND problem_id IN ?", course_id, deleteList).
+				Delete(&models.CourseProblem{}).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// 查询更新后的总题目数
+	var totalCount int64
+	err = s.db.Model(&models.CourseProblem{}).
+		Where("course_id = ?", course_id).
+		Count(&totalCount).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"course_id":     course_id,
+		"total_count":   int(totalCount),
+		"added_count":   len(createList),
+		"removed_count": len(deleteList),
+	}, nil
+}
