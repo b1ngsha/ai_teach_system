@@ -217,11 +217,25 @@ func (s *CourseService) GetUserListByCourseAndClass(classID uint, courseID uint)
 		correctRate := float64(solvedCount) / float64(solvedCount+wrongCount) * 100
 
 		// 进度
-		var totalProblemCount int64
-		err = s.db.Model(&models.CourseProblem{}).
+		// 先查出课程关联的知识点
+		var courseKnowledgePointIDs []uint
+		err = s.db.Model(&models.KnowledgePoint{}).
+			Select("id").
 			Where("course_id = ?", courseID).
+			Find(&courseKnowledgePointIDs).
+			Error
+		if err != nil {
+			return nil, err
+		}
+		// 再根据知识点和题目的关联关系查询出当前课程下的题目数量
+		var totalProblemCount int64
+		err = s.db.Model(&models.KnowledgePointProblems{}).
+			Where("knowledge_point_id IN (?)", courseKnowledgePointIDs).
 			Count(&totalProblemCount).
 			Error
+		if err != nil {
+			return nil, err
+		}
 		progress := float64(solvedCount) / float64(totalProblemCount) * 100
 		if err != nil {
 			return nil, err
@@ -291,12 +305,12 @@ func (s *CourseService) AddCourse(courseName string, pointNames []string) (map[s
 	}, nil
 }
 
-func (s *CourseService) SetCourseProblems(course_id uint, problemIDs []uint) (map[string]interface{}, error) {
+func (s *CourseService) SetKnowledgePointProblems(knowledgePointID uint, problemIDs []uint) (map[string]interface{}, error) {
 	// 先查出原来选中的题目
 	var existProblemIDs []uint
 	err := s.db.Select("problem_id").
-		Model(&models.CourseProblem{}).
-		Where("course_id = ?", course_id).
+		Model(&models.KnowledgePointProblems{}).
+		Where("knowledge_point_id = ?", knowledgePointID).
 		Scan(&existProblemIDs).
 		Error
 	if err != nil {
@@ -337,22 +351,22 @@ func (s *CourseService) SetCourseProblems(course_id uint, problemIDs []uint) (ma
 	// 开事务处理创建和删除操作
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		if len(createList) > 0 {
-			courseProblems := make([]models.CourseProblem, 0, len(createList))
+			knowledgePointProblems := make([]models.KnowledgePointProblems, 0, len(createList))
 			for _, problemID := range createList {
-				courseProblems = append(courseProblems, models.CourseProblem{
-					CourseID:  course_id,
-					ProblemID: problemID,
+				knowledgePointProblems = append(knowledgePointProblems, models.KnowledgePointProblems{
+					KnowledgePointID: knowledgePointID,
+					ProblemID:        problemID,
 				})
 			}
 
-			if err := tx.Create(&courseProblems).Error; err != nil {
+			if err := tx.Create(&knowledgePointProblems).Error; err != nil {
 				return err
 			}
 		}
 
 		if len(deleteList) > 0 {
-			if err := tx.Where("course_id = ? AND problem_id IN ?", course_id, deleteList).
-				Delete(&models.CourseProblem{}).Error; err != nil {
+			if err := tx.Where("knowledge_point_id = ? AND problem_id IN ?", knowledgePointID, deleteList).
+				Delete(&models.KnowledgePointProblems{}).Error; err != nil {
 				return err
 			}
 		}
@@ -366,8 +380,8 @@ func (s *CourseService) SetCourseProblems(course_id uint, problemIDs []uint) (ma
 
 	// 查询更新后的总题目数
 	var totalCount int64
-	err = s.db.Model(&models.CourseProblem{}).
-		Where("course_id = ?", course_id).
+	err = s.db.Model(&models.KnowledgePointProblems{}).
+		Where("knowledge_point_id = ?", knowledgePointID).
 		Count(&totalCount).
 		Error
 	if err != nil {
@@ -375,9 +389,9 @@ func (s *CourseService) SetCourseProblems(course_id uint, problemIDs []uint) (ma
 	}
 
 	return map[string]interface{}{
-		"course_id":     course_id,
-		"total_count":   int(totalCount),
-		"added_count":   len(createList),
-		"removed_count": len(deleteList),
+		"knowledge_point_id": knowledgePointID,
+		"total_count":        int(totalCount),
+		"added_count":        len(createList),
+		"removed_count":      len(deleteList),
 	}, nil
 }

@@ -36,7 +36,7 @@ func InitDB() *gorm.DB {
 		&models.Class{},
 		&models.KnowledgePoint{},
 		&models.UserProblem{},
-		&models.CourseProblem{},
+		&models.KnowledgePointProblems{},
 	)
 	if err != nil {
 		log.Fatal("数据库迁移失败：", err)
