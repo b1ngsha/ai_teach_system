@@ -395,3 +395,28 @@ func (s *CourseService) SetKnowledgePointProblems(knowledgePointID uint, problem
 		"removed_count":      len(deleteList),
 	}, nil
 }
+
+func (s *CourseService) GetKnowledgePointProblems(knowledgePointID uint) ([]map[string]interface{}, error) {
+	// 查询该知识点下的所有题目ID
+	var problemIDs []uint
+	err := s.db.Model(&models.KnowledgePointProblems{}).
+		Select("problem_id").
+		Where("knowledge_point_id = ?", knowledgePointID).
+		Find(&problemIDs).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 根据ID查询具体信息
+	var problemInfos []map[string]interface{}
+	err = s.db.Model(&models.Problem{}).
+		Select("id, title, content").
+		Where("id in (?)", problemIDs).
+		Find(&problemInfos).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return problemInfos, nil
+}
