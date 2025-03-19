@@ -167,7 +167,7 @@ func (s *CourseService) GetCourseDetail(courseID, userID uint) (*models.Course, 
 
 func (s *CourseService) GetKnowledgePoints(courseID uint) ([]map[string]interface{}, error) {
 	var points []map[string]interface{}
-	err := s.db.Model(&models.KnowledgePoint{}).Select("name").Where("course_id = ?", courseID).Find(&points).Error
+	err := s.db.Model(&models.KnowledgePoint{}).Select("id, name").Where("course_id = ?", courseID).Find(&points).Error
 	if err != nil {
 		return nil, err
 	}
