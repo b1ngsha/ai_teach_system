@@ -69,6 +69,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			courses.POST("/", courseController.AddCourse)
 			courses.POST("/problems/", courseController.SetKnowledgePointProblems)
 			courses.GET("/problems/:knowledge_point_id/", courseController.GetKnowledgePointProblems)
+			courses.POST("/classes/", courseController.SetCourseClasses)
 		}
 
 		// 题库相关路由

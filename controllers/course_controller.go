@@ -21,6 +21,11 @@ type SetKnowledgePointProblemsRequest struct {
 	ProblemsIDs      []uint `json:"problem_ids"`
 }
 
+type SetClassCoursesRequest struct {
+	CourseID uint   `json:"course_id"`
+	ClassIDs []uint `json:"class_ids"`
+}
+
 type CourseController struct {
 	courseService *services.CourseService
 }
@@ -126,17 +131,30 @@ func (c *CourseController) SetKnowledgePointProblems(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success(result))
 }
 
-
 func (c *CourseController) GetKnowledgePointProblems(ctx *gin.Context) {
 	knowledgePointID, err := strconv.ParseUint(ctx.Param("knowledge_point_id"), 10, 32)
-	if err!= nil {
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.Error("无效的知识点ID"))
 		return
 	}
 	problems, err := c.courseService.GetKnowledgePointProblems(uint(knowledgePointID))
-	if err!= nil {
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取知识点题目失败: %v", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success(problems))
+}
+
+func (c *CourseController) SetCourseClasses(ctx *gin.Context) {
+	var req SetClassCoursesRequest
+	if err := ctx.ShouldBindJSON(&req); err!= nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
+		return
+	}
+	result, err := c.courseService.SetCourseClasses(req.CourseID, req.ClassIDs)
+	if err!= nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("设置课程班级失败: %v", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success(result))
 }

@@ -420,3 +420,83 @@ func (s *CourseService) GetKnowledgePointProblems(knowledgePointID uint) ([]map[
 	}
 	return problemInfos, nil
 }
+
+func (s *CourseService) SetCourseClasses(courseID uint, classIDs []uint) (map[string]interface{}, error) {
+	// 先查出原来的班级
+	var existClassIDs []uint
+	err := s.db.Select("class_id").
+		Model(&models.CourseClasses{}).
+		Where("course_id = ?", courseID).
+		Scan(&existClassIDs).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	// 存到map里提高查询效率
+	existClassIDMap := make(map[uint]int)
+	for _, classID := range existClassIDs {
+		existClassIDMap[classID] = 1
+	}
+	newClassIDMap := make(map[uint]int)
+	for _, id := range classIDs {
+		newClassIDMap[id] = 1
+	}
+	// 考虑三种情况:
+	// 新旧集合中都存在的保持不变
+	// 新集合中存在旧集合中不存在则新增
+	// 旧集合中存在新集合中不存在则删除
+	createList := make([]uint, 0)
+	deleteList := make([]uint, 0)
+	// 找出需要新增的班级
+	for _, id := range classIDs {
+		if _, exist := existClassIDMap[id]; !exist {
+			createList = append(createList, id)
+		}
+	}
+	// 找出需要删除的班级
+	for _, id := range existClassIDs {
+		if _, exist := newClassIDMap[id]; !exist {
+			deleteList = append(deleteList, id)
+		}
+	}
+	// 开事务处理创建和删除操作
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		if len(createList) > 0 {
+			courseClasses := make([]models.CourseClasses, 0, len(createList))
+			for _, classID := range createList {
+				courseClasses = append(courseClasses, models.CourseClasses{
+					CourseID: courseID,
+					ClassID:  classID,
+				})
+			}
+			if err := tx.Create(&courseClasses).Error; err != nil {
+				return err
+			}
+		}
+		if len(deleteList) > 0 {
+			if err := tx.Where("course_id = ? AND class_id IN?", courseID, deleteList).
+				Delete(&models.CourseClasses{}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	// 查询更新后的总班级数
+	var totalCount int64
+	err = s.db.Model(&models.CourseClasses{}).
+		Where("course_id = ?", courseID).
+		Count(&totalCount).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"course_id":     courseID,
+		"total_count":   int(totalCount),
+		"added_count":   len(createList),
+		"removed_count": len(deleteList),
+	}, nil
+}
