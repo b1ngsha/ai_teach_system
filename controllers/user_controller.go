@@ -73,21 +73,19 @@ func (c *UserController) Register(ctx *gin.Context) {
 		return
 	}
 
+	var avatarURL string
 	file, err := ctx.FormFile("avatar")
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, utils.Error("请选择要上传的头像"))
-		return
-	}
+	if err == nil {
+		if !utils.IsValidImageFile(file.Filename) {
+			ctx.JSON(http.StatusBadRequest, utils.Error("只支持上传图片文件"))
+			return
+		}
 
-	if !utils.IsValidImageFile(file.Filename) {
-		ctx.JSON(http.StatusBadRequest, utils.Error("只支持上传图片文件"))
-		return
-	}
-
-	avatarURL, err := c.ossService.UploadAvatar(file)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("上传头像失败: %v", err)))
-		return
+		avatarURL, err = c.ossService.UploadAvatar(file)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("上传头像失败: %v", err)))
+			return
+		}
 	}
 
 	user, err := c.userService.Register(req.Username, req.Password, req.Name, req.StudentID, req.Class, avatarURL)

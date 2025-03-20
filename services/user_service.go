@@ -46,11 +46,13 @@ func (s *UserService) Register(username string, password string, name string, st
 		return nil, errors.New("用户已存在")
 	}
 
-	var classCount int64
 	var class models.Class
-	s.db.Model(&models.Class{}).Where("name = ?", className).Find(&class).Count(&classCount)
-	if count == 0 {
-		return nil, errors.New(fmt.Sprintf("请先创建班级: %s", className))
+	err := s.db.Model(&models.Class{}).Where("name = ?", className).First(&class).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("请先创建班级: %s", className)
+		}
+		return nil, fmt.Errorf("查询班级信息失败: %v", err)
 	}
 
 	s.db.Model(&models.Class{}).Where("name = ")
