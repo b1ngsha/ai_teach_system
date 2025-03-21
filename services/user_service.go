@@ -119,3 +119,19 @@ func (s *UserService) CreateAdminIfNotExists() error {
 
 	return s.db.Create(&admin).Error
 }
+
+func (s *UserService) GetTryRecords(userID uint) ([]map[string]interface{}, error) {
+	var result []map[string]interface{}
+	err := s.db.Select("user_problems.problem_id, courses.name AS course_name, knowledge_points.name AS knowledge_point_name, problems.title_cn, problems.title, user_problems.status, user_problems.updated_at").
+		Model(&models.UserProblem{}).
+		Joins("JOIN problems ON user_problems.problem_id = problems.id").
+		Joins("JOIN knowledge_points ON user_problems.knowledge_point_id = knowledge_points.id").
+		Joins("JOIN courses ON knowledge_points.course_id = courses.id").
+		Where("user_problems.user_id = ?", userID).
+		Scan(&result).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return result, err
+}

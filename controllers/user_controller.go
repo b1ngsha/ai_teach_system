@@ -107,3 +107,13 @@ func (c *UserController) GetUserInfo(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, utils.Success(userInfo))
 }
+
+func (c *UserController) GetTryRecords(ctx *gin.Context) {
+	userID := ctx.GetUint("userID")
+	records, err := c.userService.GetTryRecords(userID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取用户答题记录失败: %v", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success(records))
+}

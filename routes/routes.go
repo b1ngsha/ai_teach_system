@@ -57,6 +57,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		users := auth.Group("/users")
 		{
 			users.GET("/", userController.GetUserInfo)
+			users.GET("/records/", userController.GetTryRecords)
 		}
 
 		// 课程相关路由
