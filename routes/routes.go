@@ -58,6 +58,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		{
 			users.GET("/", userController.GetUserInfo)
 			users.GET("/records/", userController.GetTryRecords)
+			users.GET("/records/:id/", userController.GetTryRecordDetail)
 		}
 
 		// 课程相关路由

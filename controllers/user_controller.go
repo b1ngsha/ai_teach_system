@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -116,4 +117,20 @@ func (c *UserController) GetTryRecords(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success(records))
+}
+
+func (c *UserController) GetTryRecordDetail(ctx *gin.Context) {
+	userID := ctx.GetUint("userID")
+	recordID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的答题记录ID"))
+		return
+	}
+
+	record, err := c.userService.GetTryRecordDetail(userID, uint(recordID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取用户答题详情失败: %v", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success(record))
 }
