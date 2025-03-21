@@ -4,7 +4,6 @@ import (
 	"ai_teach_system/services"
 	"ai_teach_system/utils"
 	"fmt"
-	"mime/multipart"
 	"net/http"
 	"strconv"
 
@@ -22,7 +21,6 @@ type RegisterRequest struct {
 	Name      string
 	StudentID string
 	Class     string
-	Avatar    *multipart.FileHeader
 }
 
 type UserController struct {
@@ -74,22 +72,7 @@ func (c *UserController) Register(ctx *gin.Context) {
 		return
 	}
 
-	var avatarURL string
-	file, err := ctx.FormFile("avatar")
-	if err == nil {
-		if !utils.IsValidImageFile(file.Filename) {
-			ctx.JSON(http.StatusBadRequest, utils.Error("只支持上传图片文件"))
-			return
-		}
-
-		avatarURL, err = c.ossService.UploadAvatar(file)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("上传头像失败: %v", err)))
-			return
-		}
-	}
-
-	user, err := c.userService.Register(req.Username, req.Password, req.Name, req.StudentID, req.Class, avatarURL)
+	user, err := c.userService.Register(req.Username, req.Password, req.Name, req.StudentID, req.Class)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
 		return

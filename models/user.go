@@ -14,7 +14,6 @@ const (
 
 type User struct {
 	gorm.Model
-	Avatar    string    `json:"avatar"`
 	Username  string    `json:"username" gorm:"unique;not null"`
 	Name      string    `json:"name" gorm:"unique;not null"`
 	StudentID string    `json:"student_id" gorm:"unique;not null"`

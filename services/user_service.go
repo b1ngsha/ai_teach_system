@@ -39,7 +39,7 @@ func (s *UserService) Login(studentID string, password string) (string, error) {
 	return token, nil
 }
 
-func (s *UserService) Register(username string, password string, name string, studentId string, className string, avatar string) (*models.User, error) {
+func (s *UserService) Register(username string, password string, name string, studentId string, className string) (*models.User, error) {
 	var count int64
 	s.db.Model(&models.User{}).Where("username = ?", username).Or("student_id = ?", studentId).Or("name = ?", name).Count(&count)
 	if count > 0 {
@@ -63,7 +63,6 @@ func (s *UserService) Register(username string, password string, name string, st
 		StudentID: studentId,
 		Class:     class,
 		ClassID:   class.ID,
-		Avatar:    avatar,
 	}
 
 	if err := s.db.Create(&user).Error; err != nil {
@@ -94,7 +93,6 @@ func (s *UserService) GetUserInfo(userID uint) (map[string]interface{}, error) {
 	completionRate := float64(solvedProblems) / float64(totalProblems) * 100
 
 	return map[string]interface{}{
-		"avatar":          user.Avatar,
 		"username":        user.Username,
 		"learn_progress":  completionRate,
 		"solved_problems": solvedProblems,
