@@ -183,76 +183,6 @@ func (s *CourseService) GetCourseList() ([]string, error) {
 	return courseNames, nil
 }
 
-func (s *CourseService) GetUserListByCourseAndClass(classID uint, courseID uint) ([]map[string]interface{}, error) {
-	// 查询当前班级的用户列表
-	var userList []models.User
-	err := s.db.Model(&models.User{}).Where("class_id = ?", classID).Find(&userList).Error
-	if err != nil {
-		return nil, err
-	}
-
-	// 查询每个用户的答题数据
-	result := make([]map[string]interface{}, len(userList))
-	for _, user := range userList {
-		var solvedCount, wrongCount int64
-		// 查询作答正确数量
-		err := s.db.Model(&models.UserProblem{}).
-			Where("user_id = ? AND course_id = ? AND status = ?", user.ID, courseID, models.ProblemStatusSolved).
-			Count(&solvedCount).
-			Error
-		if err != nil {
-			return nil, err
-		}
-
-		// 查询作答错误数量
-		err = s.db.Model(&models.UserProblem{}).
-			Where("user_id = ? AND course_id = ? AND status = ?", user.ID, courseID, models.ProblemStatusTried).
-			Count(&wrongCount).
-			Error
-		if err != nil {
-			return nil, err
-		}
-
-		// 正确率
-		correctRate := float64(solvedCount) / float64(solvedCount+wrongCount) * 100
-
-		// 进度
-		// 先查出课程关联的知识点
-		var courseKnowledgePointIDs []uint
-		err = s.db.Model(&models.KnowledgePoint{}).
-			Select("id").
-			Where("course_id = ?", courseID).
-			Find(&courseKnowledgePointIDs).
-			Error
-		if err != nil {
-			return nil, err
-		}
-		// 再根据知识点和题目的关联关系查询出当前课程下的题目数量
-		var totalProblemCount int64
-		err = s.db.Model(&models.KnowledgePointProblems{}).
-			Where("knowledge_point_id IN (?)", courseKnowledgePointIDs).
-			Count(&totalProblemCount).
-			Error
-		if err != nil {
-			return nil, err
-		}
-		progress := float64(solvedCount) / float64(totalProblemCount) * 100
-		if err != nil {
-			return nil, err
-		}
-
-		result = append(result, map[string]interface{}{
-			"student_id":   user.StudentID,
-			"name":         user.Name,
-			"solved_count": solvedCount,
-			"wrong_count":  wrongCount,
-			"correct_rate": correctRate,
-			"progress":     progress,
-		})
-	}
-	return result, nil
-}
-
 func (s *CourseService) AddCourse(courseName string, pointNames []string) (map[string]interface{}, error) {
 	// 检查课程是否已存在
 	var courseCount int64
@@ -303,122 +233,6 @@ func (s *CourseService) AddCourse(courseName string, pointNames []string) (map[s
 		"course_name": course.Name,
 		"points":      course.Points,
 	}, nil
-}
-
-func (s *CourseService) SetKnowledgePointProblems(knowledgePointID uint, problemIDs []uint) (map[string]interface{}, error) {
-	// 先查出原来选中的题目
-	var existProblemIDs []uint
-	err := s.db.Select("problem_id").
-		Model(&models.KnowledgePointProblems{}).
-		Where("knowledge_point_id = ?", knowledgePointID).
-		Scan(&existProblemIDs).
-		Error
-	if err != nil {
-		return nil, err
-	}
-
-	// 存到map里提高查询效率
-	existProblemIDMap := make(map[uint]int)
-	for _, problemID := range existProblemIDs {
-		existProblemIDMap[problemID] = 1
-	}
-	newProblemIDMap := make(map[uint]int)
-	for _, id := range problemIDs {
-		newProblemIDMap[id] = 1
-	}
-
-	// 考虑三种情况:
-	// 新旧集合中都存在的保持不变
-	// 新集合中存在旧集合中不存在则新增
-	// 旧集合中存在新集合中不存在则删除
-	createList := make([]uint, 0)
-	deleteList := make([]uint, 0)
-
-	// 找出需要新增的题目
-	for _, id := range problemIDs {
-		if _, exist := existProblemIDMap[id]; !exist {
-			createList = append(createList, id)
-		}
-	}
-
-	// 找出需要删除的题目
-	for _, id := range existProblemIDs {
-		if _, exist := newProblemIDMap[id]; !exist {
-			deleteList = append(deleteList, id)
-		}
-	}
-
-	// 开事务处理创建和删除操作
-	err = s.db.Transaction(func(tx *gorm.DB) error {
-		if len(createList) > 0 {
-			knowledgePointProblems := make([]models.KnowledgePointProblems, 0, len(createList))
-			for _, problemID := range createList {
-				knowledgePointProblems = append(knowledgePointProblems, models.KnowledgePointProblems{
-					KnowledgePointID: knowledgePointID,
-					ProblemID:        problemID,
-				})
-			}
-
-			if err := tx.Create(&knowledgePointProblems).Error; err != nil {
-				return err
-			}
-		}
-
-		if len(deleteList) > 0 {
-			if err := tx.Where("knowledge_point_id = ? AND problem_id IN ?", knowledgePointID, deleteList).
-				Delete(&models.KnowledgePointProblems{}).Error; err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	// 查询更新后的总题目数
-	var totalCount int64
-	err = s.db.Model(&models.KnowledgePointProblems{}).
-		Where("knowledge_point_id = ?", knowledgePointID).
-		Count(&totalCount).
-		Error
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string]interface{}{
-		"knowledge_point_id": knowledgePointID,
-		"total_count":        int(totalCount),
-		"added_count":        len(createList),
-		"removed_count":      len(deleteList),
-	}, nil
-}
-
-func (s *CourseService) GetKnowledgePointProblems(knowledgePointID uint) ([]map[string]interface{}, error) {
-	// 查询该知识点下的所有题目ID
-	var problemIDs []uint
-	err := s.db.Model(&models.KnowledgePointProblems{}).
-		Select("problem_id").
-		Where("knowledge_point_id = ?", knowledgePointID).
-		Find(&problemIDs).
-		Error
-	if err != nil {
-		return nil, err
-	}
-
-	// 根据ID查询具体信息
-	var problemInfos []map[string]interface{}
-	err = s.db.Model(&models.Problem{}).
-		Select("id, title, content").
-		Where("id in (?)", problemIDs).
-		Find(&problemInfos).
-		Error
-	if err != nil {
-		return nil, err
-	}
-	return problemInfos, nil
 }
 
 func (s *CourseService) SetCourseClasses(courseID uint, classIDs []uint) (map[string]interface{}, error) {
@@ -499,4 +313,29 @@ func (s *CourseService) SetCourseClasses(courseID uint, classIDs []uint) (map[st
 		"added_count":   len(createList),
 		"removed_count": len(deleteList),
 	}, nil
+}
+
+func (s *CourseService) GetCourseClasses(courseID uint) ([]map[string]interface{}, error) {
+	// 查询该课程下的所有班级ID
+	var classIDs []uint
+	err := s.db.Model(&models.CourseClasses{}).
+		Select("class_id").
+		Where("course_id = ?", courseID).
+		Find(&classIDs).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 根据课程ID查询课程信息
+	var classInfos []map[string]interface{}
+	err = s.db.Model(&models.Class{}).
+		Select("id, name").
+		Where("id IN (?)", classIDs).
+		Find(&classInfos).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return classInfos, nil
 }

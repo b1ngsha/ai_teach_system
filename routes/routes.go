@@ -41,7 +41,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		{
 			leetcode.POST("/interpret_solution/", leetcodeController.RunTestCase)
 			leetcode.POST("/submit/", leetcodeController.Submit)
-			leetcode.GET("/check/:id/", leetcodeController.Check)
+			leetcode.POST("/check/", leetcodeController.Check)
 		}
 
 		// AI 相关路由
@@ -64,14 +64,44 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		// 课程相关路由
 		courses := auth.Group("/courses")
 		{
-			courses.GET("/:id/", courseController.GetCourseDetail)
-			courses.GET("/:id/knowledge_points/", courseController.GetKnowledgePoints)
+			// 获取所有课程列表
 			courses.GET("/", courseController.GetCourseList)
-			courses.GET("/users/:course_id/:class_id/", courseController.GetUserListByCourseAndClass)
+			// 添加新课程
 			courses.POST("/", courseController.AddCourse)
-			courses.POST("/problems/", courseController.SetKnowledgePointProblems)
-			courses.GET("/problems/:knowledge_point_id/", courseController.GetKnowledgePointProblems)
-			courses.POST("/classes/", courseController.SetCourseClasses)
+			// 获取课程详情
+			courses.GET("/:course_id/", courseController.GetCourseDetail)
+
+			// 知识点相关路由
+			knowledgePoints := courses.Group("/:course_id/knowledge_points")
+			{
+				// 获取课程下的知识点列表
+				knowledgePoints.GET("/", courseController.GetKnowledgePoints)
+
+				// 题目相关路由
+				problems := knowledgePoints.Group("/:knowledge_point_id/problems")
+				{
+					// 设置知识点下的题目列表
+					problems.POST("/", problemController.SetKnowledgePointProblems)
+					// 获取知识点下的题目列表
+					problems.GET("/", problemController.GetKnowledgePointProblems)
+				}
+			}
+
+			// 班级相关路由
+			classes := courses.Group("/:course_id/classes")
+			{
+				// 获取课程下的班级列表
+				classes.GET("/", courseController.GetCourseClasses)
+				// 设置课程下的班级列表
+				classes.POST("/", courseController.SetCourseClasses)
+
+				// 用户相关路由
+				users := classes.Group("/:class_id/users")
+				{
+					// 获取某个课程和班级下的用户列表
+					users.GET("/", userController.GetUserListByCourseAndClass)
+				}
+			}
 		}
 
 		// 题库相关路由

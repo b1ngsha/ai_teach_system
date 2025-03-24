@@ -16,8 +16,8 @@ import (
 type LeetCodeServiceInterface interface {
 	FetchAllProblems() ([]*models.Problem, error)
 	RunTestCase(userID uint, questionId int, code string, lang string) (map[string]interface{}, error)
-	Submit(userID uint, lang string, question_id int, code string) (map[string]interface{}, error)
-	Check(userID uint, runCodeID string) (map[string]interface{}, error)
+	Submit(userID uint, lang string, knowledge_point_id uint, question_id int, code string) (map[string]interface{}, error)
+	Check(userID uint, runCodeID string, test bool) (map[string]interface{}, error)
 }
 
 type LeetCodeService struct {
@@ -192,7 +192,7 @@ func (s *LeetCodeService) FetchProblemDetail(titleSlug string) (*models.Problem,
 	if !ok {
 		content = ""
 	}
-	
+
 	translatedTitle, ok := question["translatedTitle"].(string)
 	if !ok {
 		translatedTitle = ""
@@ -239,12 +239,12 @@ func (s *LeetCodeService) RunTestCase(userID uint, leetcodeQuestionId int, code 
 	return result, nil
 }
 
-func (s *LeetCodeService) Submit(userID uint, lang string, leetcodeQuestionId int, code string) (map[string]interface{}, error) {
+func (s *LeetCodeService) Submit(userID uint, lang string, knowledge_point_id uint, leetcodeQuestionId int, code string) (map[string]interface{}, error) {
 	var problem models.Problem
 	s.db.Model(&models.Problem{}).Where("leetcode_id = ?", leetcodeQuestionId).First(&problem)
 	body := &map[string]interface{}{
 		"lang":        lang,
-		"question_id": leetcodeQuestionId,
+		"question_id": strconv.Itoa(leetcodeQuestionId),
 		"typed_code":  code,
 	}
 	var result map[string]interface{}
@@ -259,12 +259,22 @@ func (s *LeetCodeService) Submit(userID uint, lang string, leetcodeQuestionId in
 		return nil, err
 	}
 
-	var tryRecord models.UserProblem
-	s.db.Where(models.UserProblem{UserID: userID, ProblemID: problem.ID}).Attrs(models.UserProblem{Status: models.ProblemStatusTried}).FirstOrCreate(&tryRecord)
+	// 新增作答记录
+	submissionID := result["submission_id"].(float64)
+	tryRecord := models.UserProblem{
+		UserID:           userID,
+		KnowledgePointID: knowledge_point_id,
+		ProblemID:        problem.ID,
+		Status:           models.ProblemStatusTried,
+		TypedCode:        code,
+		SubmissionID:     submissionID,
+	}
+	s.db.Create(&tryRecord)
+
 	return result, nil
 }
 
-func (s *LeetCodeService) Check(userID uint, runCodeID string) (map[string]interface{}, error) {
+func (s *LeetCodeService) Check(userID uint, runCodeID string, test bool) (map[string]interface{}, error) {
 	var result map[string]interface{}
 	path := fmt.Sprintf("/submissions/detail/%s/check", runCodeID)
 	_, err := s.Client.R().
@@ -274,5 +284,29 @@ func (s *LeetCodeService) Check(userID uint, runCodeID string) (map[string]inter
 	if err != nil {
 		return nil, err
 	}
+
+	// 当检查提交结果时才更新提交记录状态
+	if !test {
+		// 修改提交记录状态
+		state := result["state"].(string)
+		var status models.ProblemStatus
+		switch state {
+		case "SUCCESS":
+			status = models.ProblemStatusSolved
+		case "FAILED":
+			status = models.ProblemStatusFailed
+		default:
+			return nil, fmt.Errorf("未知状态: %s", state)
+		}
+
+		err = s.db.Model(&models.UserProblem{}).
+			Where("user_id = ? AND submission_id = ?", userID, runCodeID).
+			Update("status", status).
+			Error
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return result, nil
 }
