@@ -136,3 +136,19 @@ func (c *UserController) GetUserListByCourseAndClass(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, utils.Success(result))
 }
+
+func (c *UserController) GetUserListByClass(ctx *gin.Context) {
+	classID, err := strconv.ParseUint(ctx.Param("class_id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的班级ID"))
+		return
+	}
+
+	result, err := c.userService.GetUserListByClass(uint(classID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("查询学生列表失败: %v", err)))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success(result))
+}

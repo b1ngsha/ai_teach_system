@@ -17,7 +17,7 @@ func NewUserService(db *gorm.DB) *UserService {
 	return &UserService{db: db}
 }
 
-func (s *UserService) Login(studentID string, password string) (string, error) {
+func (s *UserService) Login(studentID, password string) (string, error) {
 	var user models.User
 	if err := s.db.Where("student_id = ?", studentID).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -39,7 +39,7 @@ func (s *UserService) Login(studentID string, password string) (string, error) {
 	return token, nil
 }
 
-func (s *UserService) Register(username string, password string, name string, studentId string, className string) (*models.User, error) {
+func (s *UserService) Register(username, password, name, studentId, className string) (*models.User, error) {
 	var count int64
 	s.db.Model(&models.User{}).Where("username = ?", username).Or("student_id = ?", studentId).Or("name = ?", name).Count(&count)
 	if count > 0 {
@@ -134,7 +134,7 @@ func (s *UserService) GetTryRecords(userID uint) ([]map[string]interface{}, erro
 	return result, err
 }
 
-func (s *UserService) GetTryRecordDetail(userID uint, recordID uint) (map[string]interface{}, error) {
+func (s *UserService) GetTryRecordDetail(userID, recordID uint) (map[string]interface{}, error) {
 	var result map[string]interface{}
 	err := s.db.Select("problems.title, problems.title_cn, problems.content, user_problems.typed_code, user_problems.wrong_reason_and_analyze, user_problems.corrected_code").
 		Model(&models.UserProblem{}).
@@ -149,7 +149,7 @@ func (s *UserService) GetTryRecordDetail(userID uint, recordID uint) (map[string
 	return result, nil
 }
 
-func (s *UserService) GetUserListByCourseAndClass(classID uint, courseID uint) ([]map[string]interface{}, error) {
+func (s *UserService) GetUserListByCourseAndClass(classID, courseID uint) ([]map[string]interface{}, error) {
 	// 查询当前班级的用户列表
 	var userList []models.User
 	err := s.db.Model(&models.User{}).Where("class_id = ?", classID).Find(&userList).Error
@@ -217,4 +217,17 @@ func (s *UserService) GetUserListByCourseAndClass(classID uint, courseID uint) (
 		})
 	}
 	return result, nil
+}
+
+func (s *UserService) GetUserListByClass(classID uint) ([]map[string]interface{}, error) {
+	var users []map[string]interface{}
+	err := s.db.Model(&models.User{}).
+		Select("id, name, username, student_id").
+		Where("class_id = ?", classID).
+		Find(&users).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
 }

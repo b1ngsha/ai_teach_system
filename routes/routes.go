@@ -116,6 +116,12 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		{
 			classes.GET("/", classController.GetClassList)
 			classes.POST("/", classController.AddClass)
+
+			// 用户相关路由
+			users := classes.Group("/:class_id/users")
+			{
+				users.GET("/", userController.GetUserListByClass)
+			}
 		}
 	}
 
