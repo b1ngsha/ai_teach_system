@@ -134,12 +134,12 @@ func (s *UserService) GetTryRecords(userID uint) ([]map[string]interface{}, erro
 	return result, err
 }
 
-func (s *UserService) GetTryRecordDetail(userID, recordID uint) (map[string]interface{}, error) {
+func (s *UserService) GetTryRecordDetail(recordID uint) (map[string]interface{}, error) {
 	var result map[string]interface{}
 	err := s.db.Select("problems.title, problems.title_cn, problems.content, user_problems.typed_code, user_problems.wrong_reason_and_analyze, user_problems.corrected_code").
 		Model(&models.UserProblem{}).
 		Joins("JOIN problems ON user_problems.problem_id = problems.id").
-		Where("user_problems.user_id = ? AND user_problems.id = ?", userID, recordID).
+		Where("user_problems.id = ?", recordID).
 		Scan(&result).
 		Error
 	if err != nil {

@@ -93,7 +93,23 @@ func (c *UserController) GetUserInfo(ctx *gin.Context) {
 }
 
 func (c *UserController) GetTryRecords(ctx *gin.Context) {
-	userID := ctx.GetUint("userID")
+	var userID uint
+	// 首先尝试从query中获取user_id
+	userIDstr := ctx.Query("user_id")
+	if userIDstr != "" {
+		var err error
+		var userID64 uint64
+		userID64, err = strconv.ParseUint(userIDstr, 10, 32)
+		userID = uint(userID64)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, utils.Error("无效的 user_id 参数"))
+			return
+		}
+	} else {
+		// 如果query参数中取不到，则从context当中取
+		userID = ctx.GetUint("userID")
+	}
+
 	records, err := c.userService.GetTryRecords(userID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取用户答题记录失败: %v", err)))
@@ -103,14 +119,13 @@ func (c *UserController) GetTryRecords(ctx *gin.Context) {
 }
 
 func (c *UserController) GetTryRecordDetail(ctx *gin.Context) {
-	userID := ctx.GetUint("userID")
 	recordID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.Error("无效的答题记录ID"))
 		return
 	}
 
-	record, err := c.userService.GetTryRecordDetail(userID, uint(recordID))
+	record, err := c.userService.GetTryRecordDetail(uint(recordID))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取用户答题详情失败: %v", err)))
 		return
