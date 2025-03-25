@@ -71,27 +71,14 @@ func (s *ProblemService) GetProblemDetail(problemID uint) (map[string]interface{
 		"sample_cases": problem.SampleTestcases,
 		"tags":         problem.Tags,
 	}
-	tags, ok := problemMap["tags"].([]models.Tag)
-	knowledgePointIDs := make([]uint, len(tags))
-	if ok {
-		for i, tag := range tags {
-			knowledgePointIDs[i] = tag.KnowledgePointID
-		}
-	}
-
-	// 去重
-	var uniqueKnowledgePointIds []uint
-	uniqueMap := make(map[uint]bool)
-	for _, id := range knowledgePointIDs {
-		if !uniqueMap[id] {
-			uniqueMap[id] = true
-			uniqueKnowledgePointIds = append(uniqueKnowledgePointIds, id)
-		}
-	}
 
 	var knowledgePointInfo []map[string]interface{}
-	err = s.db.Model(&models.KnowledgePoint{}).Select("id, name").Where("id IN (?)", uniqueKnowledgePointIds).Find(&knowledgePointInfo).Error
-
+	err = s.db.Model(&models.KnowledgePoint{}).
+		Select("id, name").
+		Joins("JOIN knowledge_point_problems ON knowledge_point_problems.problem_id = problems.id").
+		Where("problems.id = ?", problemID).
+		Scan(&knowledgePointInfo).
+		Error
 	if err != nil {
 		return nil, err
 	}
