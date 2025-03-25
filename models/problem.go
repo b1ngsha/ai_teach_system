@@ -19,5 +19,5 @@ type Problem struct {
 	SampleTestcases string            `json:"sample_testcases" gorm:"type:text"`
 	Tags            []Tag             `json:"tags" gorm:"many2many:problem_tag;"`
 	Users           []User            `json:"-" gorm:"many2many:user_problems;"`
-	Course          []Course          `json:"-" gorm:"many2many:course_problems"`
+	Course          []KnowledgePoint  `json:"-" gorm:"many2many:knowledge_point_problems"`
 }

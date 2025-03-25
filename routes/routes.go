@@ -57,8 +57,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		users := auth.Group("/users")
 		{
 			users.GET("/", userController.GetUserInfo)
-			users.GET("/records/", userController.GetTryRecords)
-			users.GET("/records/:id/", userController.GetTryRecordDetail)
 		}
 
 		// 课程相关路由
@@ -101,6 +99,13 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 					// 获取某个课程和班级下的用户列表
 					users.GET("/", userController.GetUserListByCourseAndClass)
 				}
+			}
+
+			// 作答记录相关路由
+			records := courses.Group("/:course_id/records")
+			{
+				records.GET("/", userController.GetTryRecords)
+				records.GET("/:id/", userController.GetTryRecordDetail)
 			}
 		}
 

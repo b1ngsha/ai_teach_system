@@ -118,20 +118,26 @@ func (s *UserService) CreateAdminIfNotExists() error {
 	return s.db.Create(&admin).Error
 }
 
-func (s *UserService) GetTryRecords(userID uint) ([]map[string]interface{}, error) {
-	var result []map[string]interface{}
-	err := s.db.Select("user_problems.id, user_problems.problem_id, courses.name AS course_name, knowledge_points.name AS knowledge_point_name, problems.title_cn, problems.title, user_problems.status, user_problems.updated_at").
-		Model(&models.UserProblem{}).
-		Joins("JOIN problems ON user_problems.problem_id = problems.id").
-		Joins("JOIN knowledge_points ON user_problems.knowledge_point_id = knowledge_points.id").
-		Joins("JOIN courses ON knowledge_points.course_id = courses.id").
-		Where("user_problems.user_id = ?", userID).
-		Scan(&result).
+func (s *UserService) GetTryRecords(courseID, userID uint) ([]map[string]interface{}, error) {
+	knowledge_point_ids := []uint{}
+	err := s.db.Select("id").
+		Model(&models.KnowledgePoint{}).
+		Where("course_id = ?", courseID).
+		Scan(&knowledge_point_ids).
 		Error
 	if err != nil {
 		return nil, err
 	}
-	return result, err
+
+	var records []map[string]interface{}
+	err = s.db.Select("user_problems.id, user_problems.problem_id, knowledge_points.name AS knowledge_point_name, problems.title_cn, problems.title, user_problems.status, user_problems.updated_at").
+		Model(&models.UserProblem{}).
+		Joins("JOIN knowledge_points ON userproblems.knowledge_point_id = knowledge_points.id").
+		Where("knowledge_point_id in (?) AND user_id = ?", knowledge_point_ids, userID).
+		Find(&records).
+		Error
+
+	return records, err
 }
 
 func (s *UserService) GetTryRecordDetail(recordID uint) (map[string]interface{}, error) {
@@ -203,9 +209,6 @@ func (s *UserService) GetUserListByCourseAndClass(classID, courseID uint) ([]map
 			return nil, err
 		}
 		progress := float64(solvedCount) / float64(totalProblemCount) * 100
-		if err != nil {
-			return nil, err
-		}
 
 		result = append(result, map[string]interface{}{
 			"student_id":   user.StudentID,

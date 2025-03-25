@@ -110,7 +110,13 @@ func (c *UserController) GetTryRecords(ctx *gin.Context) {
 		userID = ctx.GetUint("userID")
 	}
 
-	records, err := c.userService.GetTryRecords(userID)
+	courseID, err := strconv.ParseUint(ctx.Query("course_id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的 course_id 参数"))
+		return
+	}
+
+	records, err := c.userService.GetTryRecords(uint(courseID), userID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取用户答题记录失败: %v", err)))
 		return
