@@ -23,6 +23,10 @@ type RegisterRequest struct {
 	Class     string
 }
 
+type SelectCourseRequest struct {
+	CourseID uint `json:"course_id" binding:"required"`
+}
+
 type UserController struct {
 	userService *services.UserService
 	ossService  services.OSSServiceInterface
@@ -172,4 +176,17 @@ func (c *UserController) GetUserListByClass(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, utils.Success(result))
+}
+
+func (c *UserController) SelectCourse(ctx *gin.Context) {
+	var req SelectCourseRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
+		return
+	}
+
+	// 直接将course_id设置到上下文中
+	ctx.Set("courseID", req.CourseID)
+
+	ctx.JSON(http.StatusOK, utils.Success(nil))
 }
