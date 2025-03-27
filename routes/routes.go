@@ -107,12 +107,17 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 				records.GET("/", userController.GetTryRecords)
 				records.GET("/:id/", userController.GetTryRecordDetail)
 			}
+
+			// 题库相关路由
+			problems := courses.Group("/:course_id/problems")
+			{
+				problems.POST("/", problemController.GetProblemList)
+			}
 		}
 
 		// 题库相关路由
 		problems := auth.Group("/problems")
 		{
-			problems.POST("/", problemController.GetProblemList)
 			problems.GET("/:id/", problemController.GetProblemDetail)
 		}
 

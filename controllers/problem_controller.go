@@ -30,6 +30,12 @@ type SetKnowledgePointProblemsRequest struct {
 }
 
 func (c *ProblemController) GetProblemList(ctx *gin.Context) {
+	courseID, err := strconv.ParseUint(ctx.Param("course_id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的课程ID"))
+		return
+	}
+
 	var req GetProblemListRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil && err != io.EOF {
 		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
@@ -37,7 +43,7 @@ func (c *ProblemController) GetProblemList(ctx *gin.Context) {
 	}
 
 	userID := ctx.GetUint("userID")
-	response, err := c.service.GetProblemList(userID, req.Difficulty, req.KnowledgePointID)
+	response, err := c.service.GetProblemList(uint(courseID), userID, req.Difficulty, req.KnowledgePointID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprint("获取题目列表失败: %v", err)))
 		return
