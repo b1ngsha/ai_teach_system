@@ -22,7 +22,7 @@ func (s *ProblemService) GetProblemList(courseID, userID uint, difficulty models
 	err := s.db.Select("id").
 		Model(&models.KnowledgePoint{}).
 		Where("course_id = ?", courseID).
-		Scan(knowledgePointIDs).
+		Scan(&knowledgePointIDs).
 		Error
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func (s *ProblemService) GetProblemList(courseID, userID uint, difficulty models
 	err = s.db.Select("problem_id").
 		Model(&models.KnowledgePointProblems{}).
 		Where("knowledge_point_id IN (?)", knowledgePointIDs).
-		Scan(problemIDs).
+		Scan(&problemIDs).
 		Error
 	if err != nil {
 		return nil, err
