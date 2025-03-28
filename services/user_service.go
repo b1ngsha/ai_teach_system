@@ -234,3 +234,13 @@ func (s *UserService) GetUserListByClass(classID uint) ([]map[string]interface{}
 	}
 	return users, nil
 }
+
+func (s *UserService) ResetPassword(userID uint, password string) error {
+	var user models.User
+	if err := s.db.First(&user, userID).Error; err != nil {
+		return err
+	}
+
+	user.Password = password
+	return s.db.Save(&user).Error
+}

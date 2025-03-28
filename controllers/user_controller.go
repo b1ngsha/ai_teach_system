@@ -27,6 +27,10 @@ type SelectCourseRequest struct {
 	CourseID uint `json:"course_id" binding:"required"`
 }
 
+type ResetPasswordRequest struct {
+	password string `json:"password" binding:"required"`
+}
+
 type UserController struct {
 	userService *services.UserService
 	ossService  services.OSSServiceInterface
@@ -187,6 +191,24 @@ func (c *UserController) SelectCourse(ctx *gin.Context) {
 
 	// 直接将course_id设置到上下文中
 	ctx.Set("courseID", req.CourseID)
+
+	ctx.JSON(http.StatusOK, utils.Success(nil))
+}
+
+func (c *UserController) ResetPassword(ctx *gin.Context) {
+	userID := ctx.GetUint("userID")
+
+	var req ResetPasswordRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
+		return
+	}
+
+	err := c.userService.ResetPassword(userID, req.password)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("重置密码失败: %v", err)))
+		return
+	}
 
 	ctx.JSON(http.StatusOK, utils.Success(nil))
 }
