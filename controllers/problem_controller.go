@@ -20,30 +20,35 @@ func NewProblemController(service *services.ProblemService) *ProblemController {
 	return &ProblemController{service: service}
 }
 
-type GetProblemListRequest struct {
+type GetCourseProblemListRequest struct {
 	Difficulty       models.ProblemDifficulty `json:"difficulty"`
 	KnowledgePointID uint                     `json:"knowledge_point_id"`
 }
 
 type SetKnowledgePointProblemsRequest struct {
-	ProblemsIDs      []uint `json:"problem_ids"`
+	ProblemsIDs []uint `json:"problem_ids"`
 }
 
-func (c *ProblemController) GetProblemList(ctx *gin.Context) {
+type GetProblemListRequest struct {
+	Difficulty string `json:"difficulty"`
+	TagID      uint   `json:"tag_id"`
+}
+
+func (c *ProblemController) GetCourseProblemList(ctx *gin.Context) {
 	courseID, err := strconv.ParseUint(ctx.Param("course_id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.Error("无效的课程ID"))
 		return
 	}
 
-	var req GetProblemListRequest
+	var req GetCourseProblemListRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil && err != io.EOF {
 		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
 		return
 	}
 
 	userID := ctx.GetUint("userID")
-	response, err := c.service.GetProblemList(uint(courseID), userID, req.Difficulty, req.KnowledgePointID)
+	response, err := c.service.GetCourseProblemList(uint(courseID), userID, req.Difficulty, req.KnowledgePointID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprint("获取题目列表失败: %v", err)))
 		return
@@ -101,5 +106,21 @@ func (c *ProblemController) GetKnowledgePointProblems(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取知识点题目失败: %v", err)))
 		return
 	}
+	ctx.JSON(http.StatusOK, utils.Success(problems))
+}
+
+func (c *ProblemController) GetProblemList(ctx *gin.Context) {
+	var req GetProblemListRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
+		return
+	}
+
+	problems, err := c.service.GetProblemList(req.Difficulty, req.TagID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取题目列表失败: %v", err)))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, utils.Success(problems))
 }

@@ -14,7 +14,7 @@ func NewProblemService(db *gorm.DB) *ProblemService {
 	return &ProblemService{db: db}
 }
 
-func (s *ProblemService) GetProblemList(courseID, userID uint, difficulty models.ProblemDifficulty, knowledgePointID uint) ([]map[string]interface{}, error) {
+func (s *ProblemService) GetCourseProblemList(courseID, userID uint, difficulty models.ProblemDifficulty, knowledgePointID uint) ([]map[string]interface{}, error) {
 	var problems []map[string]interface{}
 
 	// 获取课程所关联的知识点id列表
@@ -225,4 +225,27 @@ func (s *ProblemService) GetKnowledgePointProblems(knowledgePointID uint) ([]map
 		return nil, err
 	}
 	return problemInfos, nil
+}
+
+func (s *ProblemService) GetProblemList(difficulty string, tagID uint) ([]map[string]interface{}, error) {
+	var problems []map[string]interface{}
+	query := s.db.Model(&models.Problem{}).
+		Select("problems.id, leetcode_id, title_slug, title_cn, difficulty, tags.name AS tag_name").
+		Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
+		Joins("JOIN tags ON problem_tag.tag_id = tags.id")
+
+	if tagID != 0 {
+		query = query.Where("tags.id = ?", tagID)
+	}
+
+	if difficulty != "" {
+		query = query.Where("difficulty = ?", difficulty)
+	}
+
+	err := query.Scan(&problems).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return problems, nil
 }

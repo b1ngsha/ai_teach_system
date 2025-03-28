@@ -111,7 +111,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			// 题库相关路由
 			problems := courses.Group("/:course_id/problems")
 			{
-				problems.POST("/", problemController.GetProblemList)
+				problems.POST("/", problemController.GetCourseProblemList)
 			}
 		}
 
@@ -119,6 +119,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		problems := auth.Group("/problems")
 		{
 			problems.GET("/:id/", problemController.GetProblemDetail)
+			problems.POST("/", problemController.GetProblemList)
 		}
 
 		// 课程相关路由
