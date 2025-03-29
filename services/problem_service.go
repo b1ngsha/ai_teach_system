@@ -15,8 +15,6 @@ func NewProblemService(db *gorm.DB) *ProblemService {
 }
 
 func (s *ProblemService) GetCourseProblemList(courseID, userID uint, difficulty models.ProblemDifficulty, knowledgePointID uint) ([]map[string]interface{}, error) {
-	var problems []map[string]interface{}
-
 	// 获取课程所关联的知识点id列表
 	var knowledgePointIDs []uint
 	err := s.db.Select("id").
@@ -30,36 +28,38 @@ func (s *ProblemService) GetCourseProblemList(courseID, userID uint, difficulty 
 
 	// 获取所有关联的知识点下的课程id列表
 	var problemIDs []uint
-	err = s.db.Select("problem_id").
-		Model(&models.KnowledgePointProblems{}).
-		Where("knowledge_point_id IN (?)", knowledgePointIDs).
-		Scan(&problemIDs).
-		Error
+	query := s.db.Select("problem_id").Model(&models.KnowledgePointProblems{})
+
+	if knowledgePointID != 0 {
+		query = query.Where("knowledge_point_id = ?", knowledgePointID)
+	} else {
+		query = query.Where("knowledge_point_id IN (?)", knowledgePointIDs)
+	}
+
+	err = query.Scan(&problemIDs).Error
 	if err != nil {
 		return nil, err
 	}
 
-	query := s.db.Model(&models.Problem{}).
+	var problems []map[string]interface{}
+	query = s.db.Model(&models.Problem{}).
 		Select("problems.id, leetcode_id, title_slug, title_cn, difficulty").
 		Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
 		Joins("JOIN tags ON problem_tag.tag_id = tags.id").
 		Where("problems.id IN (?)", problemIDs)
-	if knowledgePointID != 0 {
-		query = query.Where("knowledge_point_id = ?", knowledgePointID)
-	}
 	if difficulty != "" {
-		query = query.Where("difficulty = ?", difficulty)
+		query = query.Where("problems.difficulty = ?", difficulty)
 	}
-	err = query.Find(&problems).Error
+	err = query.Scan(&problems).Error
 	if err != nil {
 		return nil, err
 	}
 
-	problemStatus := make([]map[string]interface{}, 0, 10)
+	var problemStatus []map[string]interface{}
 	err = s.db.Model(&models.UserProblem{}).
 		Select("problem_id, status").
 		Where("user_id = ?", userID).
-		Find(&problemStatus).Error
+		Scan(&problemStatus).Error
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (s *ProblemService) GetProblemDetail(problemID uint) (map[string]interface{
 	err = s.db.Model(&models.KnowledgePoint{}).
 		Select("knowledge_points.id, knowledge_points.name").
 		Joins("JOIN knowledge_point_problems ON knowledge_point_problems.problem_id = knowledge_points.id").
-		Joins("JOIN problems ON problems.id = knowledge_point_problems.problem_id").	
+		Joins("JOIN problems ON problems.id = knowledge_point_problems.problem_id").
 		Where("problems.id = ?", problemID).
 		Scan(&knowledgePointInfo).
 		Error
