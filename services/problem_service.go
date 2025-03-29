@@ -99,7 +99,8 @@ func (s *ProblemService) GetProblemDetail(problemID uint) (map[string]interface{
 	var knowledgePointInfo []map[string]interface{}
 	err = s.db.Model(&models.KnowledgePoint{}).
 		Select("id, name").
-		Joins("JOIN knowledge_point_problems ON knowledge_point_problems.problem_id = problems.id").
+		Joins("JOIN knowledge_point_problems ON knowledge_point_problems.problem_id = knowledge_point.id").
+		Joins("JOIN problems ON problems.id = knowledge_point_problems.problem_id").	
 		Where("problems.id = ?", problemID).
 		Scan(&knowledgePointInfo).
 		Error
@@ -230,7 +231,7 @@ func (s *ProblemService) GetKnowledgePointProblems(knowledgePointID uint) ([]map
 func (s *ProblemService) GetProblemList(difficulty string, tagID uint) ([]map[string]interface{}, error) {
 	var problems []map[string]interface{}
 	query := s.db.Model(&models.Problem{}).
-		Select("problems.id, leetcode_id, title_slug, title_cn, difficulty, tags.name AS tag_name").
+		Select("problems.id, leetcode_id, title_slug, title_cn, difficulty, tags.id AS tag_id, tags.name AS tag_name").
 		Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
 		Joins("JOIN tags ON problem_tag.tag_id = tags.id")
 
