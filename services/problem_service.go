@@ -98,8 +98,8 @@ func (s *ProblemService) GetProblemDetail(problemID uint) (map[string]interface{
 
 	var knowledgePointInfo []map[string]interface{}
 	err = s.db.Model(&models.KnowledgePoint{}).
-		Select("id, name").
-		Joins("JOIN knowledge_point_problems ON knowledge_point_problems.problem_id = knowledge_point.id").
+		Select("knowledge_points.id, knowledge_points.name").
+		Joins("JOIN knowledge_point_problems ON knowledge_point_problems.problem_id = knowledge_points.id").
 		Joins("JOIN problems ON problems.id = knowledge_point_problems.problem_id").	
 		Where("problems.id = ?", problemID).
 		Scan(&knowledgePointInfo).
