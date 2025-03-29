@@ -89,9 +89,11 @@ func (s *ProblemService) GetProblemDetail(problemID uint) (map[string]interface{
 	problemMap := map[string]interface{}{
 		"id":           problem.ID,
 		"title":        problem.Title,
+		"title_cn":     problem.TitleCn,
 		"title_slug":   problem.TitleSlug,
 		"difficulty":   problem.Difficulty,
 		"content":      problem.Content,
+		"content_cn":   problem.ContentCn,
 		"sample_cases": problem.SampleTestcases,
 		"tags":         problem.Tags,
 	}
@@ -218,7 +220,7 @@ func (s *ProblemService) GetKnowledgePointProblems(knowledgePointID uint) ([]map
 	// 根据ID查询具体信息
 	var problemInfos []map[string]interface{}
 	err = s.db.Model(&models.Problem{}).
-		Select("id, title, content").
+		Select("id, title, title_cn, content, content_cn").
 		Where("id in (?)", problemIDs).
 		Find(&problemInfos).
 		Error

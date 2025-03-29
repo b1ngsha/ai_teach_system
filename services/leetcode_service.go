@@ -125,7 +125,8 @@ func (s *LeetCodeService) FetchAllProblems() ([]*models.Problem, error) {
 				for _, t := range tags {
 					tag := t.(map[string]interface{})
 					problem.Tags = append(problem.Tags, models.Tag{
-						Name: tag["name"].(string),
+						Name:   tag["name"].(string),
+						NameCn: tag["nameTranslated"].(string),
 					})
 				}
 			}
@@ -152,6 +153,7 @@ func (s *LeetCodeService) FetchProblemDetail(titleSlug string) (*models.Problem,
 			translatedTitle
 			titleSlug
 			content
+			translatedContent
 			difficulty
 			sampleTestCase
 		}
@@ -192,6 +194,10 @@ func (s *LeetCodeService) FetchProblemDetail(titleSlug string) (*models.Problem,
 	if !ok {
 		content = ""
 	}
+	contentCn, ok := question["translatedContent"].(string)
+	if !ok {
+		contentCn = ""
+	}
 
 	translatedTitle, ok := question["translatedTitle"].(string)
 	if !ok {
@@ -205,6 +211,7 @@ func (s *LeetCodeService) FetchProblemDetail(titleSlug string) (*models.Problem,
 		TitleSlug:       titleSlug,
 		Difficulty:      models.ProblemDifficulty(question["difficulty"].(string)),
 		Content:         content,
+		ContentCn:       contentCn,
 		SampleTestcases: question["sampleTestCase"].(string),
 	}
 

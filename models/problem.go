@@ -16,6 +16,7 @@ type Problem struct {
 	TitleSlug       string            `json:"title_slug" gorm:"not null"`
 	Difficulty      ProblemDifficulty `json:"difficulty" gorm:"type:ENUM('Easy', 'Medium', 'Hard')"`
 	Content         string            `json:"content" gorm:"type:text"`
+	ContentCn       string            `json:"content_cn" gorm:"type:text"`
 	SampleTestcases string            `json:"sample_testcases" gorm:"type:text"`
 	Tags            []Tag             `json:"tags" gorm:"many2many:problem_tag;"`
 	Users           []User            `json:"-" gorm:"many2many:user_problems;"`

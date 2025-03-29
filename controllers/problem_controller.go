@@ -50,7 +50,7 @@ func (c *ProblemController) GetCourseProblemList(ctx *gin.Context) {
 	userID := ctx.GetUint("userID")
 	response, err := c.service.GetCourseProblemList(uint(courseID), userID, req.Difficulty, req.KnowledgePointID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprint("获取题目列表失败: %v", err)))
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取题目列表失败: %v", err)))
 		return
 	}
 
