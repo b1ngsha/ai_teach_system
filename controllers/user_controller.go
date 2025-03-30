@@ -118,7 +118,7 @@ func (c *UserController) GetTryRecords(ctx *gin.Context) {
 		userID = ctx.GetUint("userID")
 	}
 
-	courseID, err := strconv.ParseUint(ctx.Query("course_id"), 10, 32)
+	courseID, err := strconv.ParseUint(ctx.Param("course_id"), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.Error("无效的 course_id 参数"))
 		return
