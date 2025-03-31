@@ -101,7 +101,9 @@ func (c *ProblemController) GetKnowledgePointProblems(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, utils.Error("无效的知识点ID"))
 		return
 	}
-	problems, err := c.service.GetKnowledgePointProblems(uint(knowledgePointID))
+
+	userID := ctx.GetUint("userID")
+	problems, err := c.service.GetKnowledgePointProblems(userID, uint(knowledgePointID))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取知识点题目失败: %v", err)))
 		return

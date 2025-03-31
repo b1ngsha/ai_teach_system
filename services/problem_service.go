@@ -205,7 +205,7 @@ func (s *ProblemService) SetKnowledgePointProblems(knowledgePointID uint, proble
 	}, nil
 }
 
-func (s *ProblemService) GetKnowledgePointProblems(knowledgePointID uint) ([]map[string]interface{}, error) {
+func (s *ProblemService) GetKnowledgePointProblems(userID, knowledgePointID uint) ([]map[string]interface{}, error) {
 	// 查询该知识点下的所有题目ID
 	var problemIDs []uint
 	err := s.db.Model(&models.KnowledgePointProblems{}).
@@ -226,6 +226,36 @@ func (s *ProblemService) GetKnowledgePointProblems(knowledgePointID uint) ([]map
 		Error
 	if err != nil {
 		return nil, err
+	}
+
+	// 如果当前用户为学生，则需要查询这些题目的完成状态
+	var user models.User
+	err = s.db.First(&user, userID).Error
+	if err != nil {
+		return nil, err
+	}
+
+	if user.Role == models.RoleUser {
+		var userProblems []models.UserProblem
+		err = s.db.Model(&models.UserProblem{}).
+			Where("user_id = ? AND problem_id IN (?)", userID, problemIDs).
+			Find(&userProblems).
+			Error
+		if err != nil {
+			return nil, err
+		}
+
+		// 将用户答题状态添加到题目信息中
+	outer:
+		for _, info := range problemInfos {
+			for _, userProblem := range userProblems {
+				if userProblem.ProblemID == info["id"].(uint) {
+					info["status"] = userProblem.Status
+					continue outer
+				}
+				info["status"] = models.ProblemStatusUntried
+			}
+		}
 	}
 	return problemInfos, nil
 }
