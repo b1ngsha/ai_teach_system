@@ -220,7 +220,7 @@ func (s *ProblemService) GetKnowledgePointProblems(userID, knowledgePointID uint
 	// 根据ID查询具体信息
 	var problemInfos []map[string]interface{}
 	err = s.db.Model(&models.Problem{}).
-		Select("id, title, title_cn, content, content_cn").
+		Select("id, title, title_cn, content, content_cn, difficulty").
 		Where("id in (?)", problemIDs).
 		Find(&problemInfos).
 		Error
