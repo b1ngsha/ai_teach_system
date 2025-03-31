@@ -100,7 +100,7 @@ func (c *UserController) GetUserInfo(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success(userInfo))
 }
 
-func (c *UserController) GetTryRecords(ctx *gin.Context) {
+func (c *UserController) GetCourseTryRecords(ctx *gin.Context) {
 	var userID uint
 	// 首先尝试从query中获取user_id
 	userIDstr := ctx.Query("user_id")
@@ -124,7 +124,7 @@ func (c *UserController) GetTryRecords(ctx *gin.Context) {
 		return
 	}
 
-	records, err := c.userService.GetTryRecords(uint(courseID), userID)
+	records, err := c.userService.GetCourseTryRecords(uint(courseID), userID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取用户答题记录失败: %v", err)))
 		return
@@ -211,4 +211,16 @@ func (c *UserController) ResetPassword(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, utils.Success(nil))
+}
+
+func (c *UserController) GetTryRecords(ctx *gin.Context) {
+	userID := ctx.GetUint("userID")
+
+	result, err := c.userService.GetTryRecords(userID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取作答历史记录失败: %v", err)))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success(result))
 }

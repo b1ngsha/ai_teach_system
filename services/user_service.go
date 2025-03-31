@@ -118,7 +118,7 @@ func (s *UserService) CreateAdminIfNotExists() error {
 	return s.db.Create(&admin).Error
 }
 
-func (s *UserService) GetTryRecords(courseID, userID uint) ([]map[string]interface{}, error) {
+func (s *UserService) GetCourseTryRecords(courseID, userID uint) ([]map[string]interface{}, error) {
 	knowledge_point_ids := []uint{}
 	err := s.db.Select("id").
 		Model(&models.KnowledgePoint{}).
@@ -137,6 +137,9 @@ func (s *UserService) GetTryRecords(courseID, userID uint) ([]map[string]interfa
 		Where("knowledge_point_id in (?) AND user_id = ?", knowledge_point_ids, userID).
 		Find(&records).
 		Error
+	if err != nil {
+		return nil, err
+	}
 
 	return records, err
 }
@@ -244,4 +247,19 @@ func (s *UserService) ResetPassword(userID uint, password string) error {
 
 	user.Password = password
 	return s.db.Save(&user).Error
+}
+
+func (s *UserService) GetTryRecords(userID uint) ([]map[string]interface{}, error) {
+	var records []map[string]interface{}
+	err := s.db.Select("user_problems.id, user_problems.problem_id, problems.title_cn, problems.title, user_problems.status, user_problems.updated_at").
+		Model(&models.UserProblem{}).
+		Joins("JOIN problems ON user_problems.problem_id = problems.id").
+		Where("user_id = ?", userID).
+		Scan(&records).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	return records, err
 }

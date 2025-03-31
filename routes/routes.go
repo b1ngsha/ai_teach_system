@@ -104,7 +104,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			// 作答记录相关路由
 			records := courses.Group("/:course_id/records")
 			{
-				records.GET("/", userController.GetTryRecords)
+				records.GET("/", userController.GetCourseTryRecords)
 				records.GET("/:id/", userController.GetTryRecordDetail)
 			}
 
@@ -133,6 +133,12 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			{
 				users.GET("/", userController.GetUserListByClass)
 			}
+		}
+
+		// 作答记录相关路由
+		records := auth.Group("/records")
+		{
+			records.GET("/", userController.GetTryRecords)
 		}
 	}
 
