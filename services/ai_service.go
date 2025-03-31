@@ -113,7 +113,7 @@ func (s *AIService) CorrectCode(recordID, problemID uint, language string, typed
 		return "", fmt.Errorf("no response from AI service")
 	}
 
-	err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Update("corrected_code = ?", completion.Choices[0].Message.Content).Error
+	err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Update("corrected_code", completion.Choices[0].Message.Content).Error
 	if err != nil {
 		return "", fmt.Errorf("set corrected_code error: %v", err)
 	}
@@ -165,7 +165,7 @@ func (s *AIService) AnalyzeCode(recordID, problemID uint, language string, typed
 		return "", fmt.Errorf("no response from AI service")
 	}
 
-	err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Update("wrong_reason_and_analyze = ?", completion.Choices[0].Message.Content).Error
+	err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Update("wrong_reason_and_analyze", completion.Choices[0].Message.Content).Error
 	if err != nil {
 		return "", fmt.Errorf("set wrong_reason_and_analyze error: %v", err)
 	}
