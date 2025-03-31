@@ -133,6 +133,7 @@ func (s *UserService) GetTryRecords(courseID, userID uint) ([]map[string]interfa
 	err = s.db.Select("user_problems.id, user_problems.problem_id, knowledge_points.name AS knowledge_point_name, problems.title_cn, problems.title, user_problems.status, user_problems.updated_at").
 		Model(&models.UserProblem{}).
 		Joins("JOIN knowledge_points ON userproblems.knowledge_point_id = knowledge_points.id").
+		Joins("JOIN problems ON user_problems.problem_id = problems.id").
 		Where("knowledge_point_id in (?) AND user_id = ?", knowledge_point_ids, userID).
 		Find(&records).
 		Error
