@@ -277,6 +277,7 @@ func (s *LeetCodeService) Submit(userID uint, lang string, knowledge_point_id ui
 		SubmissionID:     submissionID,
 	}
 	s.db.Create(&tryRecord)
+	result["record_id"] = tryRecord.ID
 
 	return result, nil
 }

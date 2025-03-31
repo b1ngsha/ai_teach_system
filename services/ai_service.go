@@ -14,8 +14,8 @@ import (
 
 type AIServiceInterface interface {
 	GenerateCode(title string, language string, content string, sampleTestCases string) (string, error)
-	CorrectCode(problemID uint, lang string, typedCode string) (string, error)
-	AnalyzeCode(problemID uint, lang string, typedCode string) (string, error)
+	CorrectCode(recordID, problemID uint, lang string, typedCode string) (string, error)
+	AnalyzeCode(recordID, problemID uint, lang string, typedCode string) (string, error)
 	Chat(problemID uint, typedCode string, question string) (string, error)
 }
 
@@ -72,7 +72,7 @@ func (s *AIService) GenerateCode(title string, language string, content string, 
 	return completion.Choices[0].Message.Content, nil
 }
 
-func (s *AIService) CorrectCode(problemID uint, language string, typedCode string) (string, error) {
+func (s *AIService) CorrectCode(recordID, problemID uint, language string, typedCode string) (string, error) {
 	var problem models.Problem
 	err := s.db.Model(&models.Problem{}).First(&problem, problemID).Error
 	if err != nil {
@@ -113,10 +113,15 @@ func (s *AIService) CorrectCode(problemID uint, language string, typedCode strin
 		return "", fmt.Errorf("no response from AI service")
 	}
 
+	err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Update("corrected_code = ?", completion.Choices[0].Message.Content).Error
+	if err != nil {
+		return "", fmt.Errorf("set corrected_code error: %v", err)
+	}
+
 	return completion.Choices[0].Message.Content, nil
 }
 
-func (s *AIService) AnalyzeCode(problemID uint, language string, typedCode string) (string, error) {
+func (s *AIService) AnalyzeCode(recordID, problemID uint, language string, typedCode string) (string, error) {
 	var problem models.Problem
 	err := s.db.Model(&models.Problem{}).First(&problem, problemID).Error
 	if err != nil {
@@ -158,6 +163,11 @@ func (s *AIService) AnalyzeCode(problemID uint, language string, typedCode strin
 
 	if len(completion.Choices) == 0 {
 		return "", fmt.Errorf("no response from AI service")
+	}
+
+	err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Update("wrong_reason_and_analyze = ?", completion.Choices[0].Message.Content).Error
+	if err != nil {
+		return "", fmt.Errorf("set wrong_reason_and_analyze error: %v", err)
 	}
 
 	return completion.Choices[0].Message.Content, nil

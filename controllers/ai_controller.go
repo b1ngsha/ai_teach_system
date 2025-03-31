@@ -34,12 +34,14 @@ type GenerateCodeRequest struct {
 }
 
 type CorrectCodeRequest struct {
+	RecordID uint `json:"record_id" binding:"required"`
 	ProblemID uint   `json:"problem_id" binding:"required"`
 	Language  string `json:"language" binding:"required"`
 	TypedCode string `json:"typed_code" binding:"required"`
 }
 
 type AnalyzeCodeRequest struct {
+	RecordID uint `json:"record_id" binding:"required"`
 	ProblemID uint   `json:"problem_id" binding:"required"`
 	Language  string `json:"language" binding:"required"`
 	TypedCode string `json:"typed_code" binding:"required"`
@@ -77,7 +79,7 @@ func (c *AIController) CorrectCode(ctx *gin.Context) {
 		return
 	}
 
-	code, err := c.Service.CorrectCode(req.ProblemID, req.Language, req.TypedCode)
+	code, err := c.Service.CorrectCode(req.RecordID, req.ProblemID, req.Language, req.TypedCode)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("生成代码失败: %v", err)))
@@ -96,7 +98,7 @@ func (c *AIController) AnalyzeCode(ctx *gin.Context) {
 		return
 	}
 
-	message, err := c.Service.AnalyzeCode(req.ProblemID, req.Language, req.TypedCode)
+	message, err := c.Service.AnalyzeCode(req.RecordID, req.ProblemID, req.Language, req.TypedCode)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("生成代码失败: %v", err)))
 		return
