@@ -169,36 +169,13 @@ func (s *UserService) GetUserListByCourseAndClass(classID, courseID uint) ([]map
 
 	// 查询每个用户的答题数据
 	result := make([]map[string]interface{}, len(userList))
-	for _, user := range userList {
-		var solvedCount, wrongCount int64
-		// 查询作答正确数量
-		err := s.db.Model(&models.UserProblem{}).
-			Where("user_id = ? AND course_id = ? AND status = ?", user.ID, courseID, models.ProblemStatusSolved).
-			Count(&solvedCount).
-			Error
-		if err != nil {
-			return nil, err
-		}
-
-		// 查询作答错误数量
-		err = s.db.Model(&models.UserProblem{}).
-			Where("user_id = ? AND course_id = ? AND status = ?", user.ID, courseID, models.ProblemStatusTried).
-			Count(&wrongCount).
-			Error
-		if err != nil {
-			return nil, err
-		}
-
-		// 正确率
-		correctRate := float64(solvedCount) / float64(solvedCount+wrongCount) * 100
-
-		// 进度
+	for i, user := range userList {
 		// 先查出课程关联的知识点
 		var courseKnowledgePointIDs []uint
-		err = s.db.Model(&models.KnowledgePoint{}).
-			Select("id").
+		err = s.db.Select("id").
+			Model(&models.KnowledgePoint{}).	
 			Where("course_id = ?", courseID).
-			Find(&courseKnowledgePointIDs).
+			Scan(&courseKnowledgePointIDs).
 			Error
 		if err != nil {
 			return nil, err
@@ -212,16 +189,52 @@ func (s *UserService) GetUserListByCourseAndClass(classID, courseID uint) ([]map
 		if err != nil {
 			return nil, err
 		}
-		progress := float64(solvedCount) / float64(totalProblemCount) * 100
+		
 
-		result = append(result, map[string]interface{}{
+		var solvedCount, wrongCount int64
+		// 查询作答正确数量
+		err := s.db.Model(&models.UserProblem{}).
+			Where("user_id = ? AND knowledge_point_id in (?) AND status = ?", user.ID, courseKnowledgePointIDs, models.ProblemStatusSolved).
+			Count(&solvedCount).
+			Error
+		if err != nil {
+			return nil, err
+		}
+
+		// 查询作答错误数量
+		err = s.db.Model(&models.UserProblem{}).
+			Where("user_id = ? AND knowledge_point_id in (?) AND status = ?", user.ID, courseID, models.ProblemStatusFailed).
+			Count(&wrongCount).
+			Error
+		if err != nil {
+			return nil, err
+		}
+
+		// 进度
+		var progress float64
+		if totalProblemCount > 0 {
+			progress = float64(solvedCount) / float64(totalProblemCount) * 100
+		} else {
+			progress = 0
+		}
+
+		// 正确率
+		var correctRate float64
+		totalResponses := solvedCount + wrongCount
+		if totalResponses > 0 {
+			correctRate = float64(solvedCount) / float64(totalResponses) * 100
+		} else {
+			correctRate = 0
+		}
+
+		result[i] = map[string]interface{}{
 			"student_id":   user.StudentID,
 			"name":         user.Name,
 			"solved_count": solvedCount,
 			"wrong_count":  wrongCount,
 			"correct_rate": correctRate,
 			"progress":     progress,
-		})
+		}
 	}
 	return result, nil
 }
