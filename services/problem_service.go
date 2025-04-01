@@ -246,13 +246,17 @@ func (s *ProblemService) GetKnowledgePointProblems(userID, knowledgePointID uint
 		}
 
 		// 将用户答题状态添加到题目信息中
-	outer:
+		userProblemMap := make(map[uint]models.UserProblem)
+		for _, userProblem := range userProblems {
+			userProblemMap[userProblem.ProblemID] = userProblem
+		}
+
 		for _, info := range problemInfos {
-			for _, userProblem := range userProblems {
-				if userProblem.ProblemID == info["id"].(uint) {
-					info["status"] = userProblem.Status
-					continue outer
-				}
+			problemID := info["id"].(uint)
+			userProblem, exists := userProblemMap[problemID]
+			if exists {
+				info["status"] = userProblem.Status
+			} else {
 				info["status"] = models.ProblemStatusUntried
 			}
 		}
