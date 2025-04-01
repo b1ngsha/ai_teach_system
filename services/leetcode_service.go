@@ -304,7 +304,7 @@ func (s *LeetCodeService) Check(userID uint, runCodeID string, test bool) (map[s
 		case "FAILED":
 			status = models.ProblemStatusFailed
 		default:
-			return nil, fmt.Errorf("未知状态: %s", state)
+			return result, nil
 		}
 
 		err = s.db.Model(&models.UserProblem{}).

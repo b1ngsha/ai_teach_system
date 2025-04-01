@@ -81,7 +81,7 @@ func (c *LeetCodeController) Check(ctx *gin.Context) {
 
 	result, err := c.service.Check(userID, req.RunCodeID, req.Test)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.Error("检查代码运行结果失败"))
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("检查代码运行结果失败: %v", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success(result))
