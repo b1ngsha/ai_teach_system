@@ -28,7 +28,7 @@ type SelectCourseRequest struct {
 }
 
 type ResetPasswordRequest struct {
-	password string `json:"password" binding:"required"`
+	Password string `json:"password" binding:"required"`
 }
 
 type UserController struct {
@@ -204,7 +204,7 @@ func (c *UserController) ResetPassword(ctx *gin.Context) {
 		return
 	}
 
-	err := c.userService.ResetPassword(userID, req.password)
+	err := c.userService.ResetPassword(userID, req.Password)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("重置密码失败: %v", err)))
 		return

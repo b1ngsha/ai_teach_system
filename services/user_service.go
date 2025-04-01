@@ -241,7 +241,7 @@ func (s *UserService) GetUserListByClass(classID uint) ([]map[string]interface{}
 
 func (s *UserService) ResetPassword(userID uint, password string) error {
 	var user models.User
-	if err := s.db.First(&user, userID).Error; err != nil {
+	if err := s.db.Model(&models.User{}).Where("id = ?", userID).Find(&user).Error; err != nil {
 		return err
 	}
 
