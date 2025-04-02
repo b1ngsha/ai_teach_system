@@ -67,8 +67,8 @@ func (s *ProblemService) GetCourseProblemList(courseID, userID uint, difficulty 
 outer:
 	for _, problem := range problems {
 		for _, status := range problemStatus {
-			problemID := status["problem_id"].(uint)
-			status := status["status"].(models.ProblemStatus)
+			problemID := status["problem_id"].(uint64)
+			status := status["status"].(string)
 			if problemID == problem["id"] {
 				problem["status"] = status
 				continue outer
