@@ -57,6 +57,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		users := auth.Group("/users")
 		{
 			users.GET("/", userController.GetUserInfo)
+			users.POST("/reset_password/", userController.ResetPassword)
 		}
 
 		// 课程相关路由
@@ -148,6 +149,5 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		users.POST("/login/", userController.Login)
 		users.POST("/register/", userController.Register)
 		users.POST("/select_course/", userController.SelectCourse)
-		users.POST("/reset_password/", userController.ResetPassword)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -173,7 +174,7 @@ func (s *UserService) GetUserListByCourseAndClass(classID, courseID uint) ([]map
 		// 先查出课程关联的知识点
 		var courseKnowledgePointIDs []uint
 		err = s.db.Select("id").
-			Model(&models.KnowledgePoint{}).	
+			Model(&models.KnowledgePoint{}).
 			Where("course_id = ?", courseID).
 			Scan(&courseKnowledgePointIDs).
 			Error
@@ -189,7 +190,6 @@ func (s *UserService) GetUserListByCourseAndClass(classID, courseID uint) ([]map
 		if err != nil {
 			return nil, err
 		}
-		
 
 		var solvedCount, wrongCount int64
 		// 查询作答正确数量
@@ -228,7 +228,7 @@ func (s *UserService) GetUserListByCourseAndClass(classID, courseID uint) ([]map
 		}
 
 		result[i] = map[string]interface{}{
-			"user_id": 		user.ID,
+			"user_id":      user.ID,
 			"student_id":   user.StudentID,
 			"name":         user.Name,
 			"solved_count": solvedCount,
@@ -255,12 +255,20 @@ func (s *UserService) GetUserListByClass(classID uint) ([]map[string]interface{}
 
 func (s *UserService) ResetPassword(userID uint, password string) error {
 	var user models.User
-	if err := s.db.Model(&models.User{}).Where("id = ?", userID).Find(&user).Error; err != nil {
+	if err := s.db.First(&user, userID).Error; err != nil {
 		return err
 	}
 
-	user.Password = password
-	return s.db.Save(&user).Error
+	// 手动设置密码并加密
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	// 使用Updates方法更新密码字段，直接使用加密后的密码
+	return s.db.Model(&user).Updates(map[string]interface{}{
+		"password": string(hashedPassword),
+	}).Error
 }
 
 func (s *UserService) GetTryRecords(userID uint) ([]map[string]interface{}, error) {
