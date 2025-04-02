@@ -13,30 +13,51 @@ import (
 )
 
 type AIServiceInterface interface {
-	GenerateHint(title, content, sampleTestCases string) (string, error)
-	CorrectCode(recordID, problemID uint, lang, typedCode string) (string, error)
-	AnalyzeCode(recordID, problemID uint, lang, typedCode string) (string, error)
-	Chat(problemID uint, typedCode, question string) (string, error)
+	GenerateHint(title, content, sampleTestCases, modelType string) (string, error)
+	CorrectCode(recordID, problemID uint, lang, typedCode string) (map[string]interface{}, error)
+	AnalyzeCode(recordID, problemID uint, lang, typedCode string) (map[string]interface{}, error)
+	Chat(problemID uint, typedCode, question, modelType string) (string, error)
 }
 
 type AIService struct {
-	client *openai.Client
-	db     *gorm.DB
+	clientDeepseek *openai.Client
+	clientQwen     *openai.Client
+	db             *gorm.DB
 }
 
 func NewAIService(db *gorm.DB) *AIService {
-	client := openai.NewClient(
+	clientDeepseek := openai.NewClient(
+		option.WithAPIKey(os.Getenv("DEEPSEEK_API_KEY")),
+		option.WithBaseURL(constants.DeepseekHost),
+	)
+
+	clientQwen := openai.NewClient(
 		option.WithAPIKey(os.Getenv("QWEN_API_KEY")),
 		option.WithBaseURL(constants.QwenHost),
 	)
 
 	return &AIService{
-		client: client,
-		db:     db,
+		clientDeepseek: clientDeepseek,
+		clientQwen:     clientQwen,
+		db:             db,
 	}
 }
 
-func (s *AIService) GenerateHint(title, content, sampleTestCases string) (string, error) {
+func (s *AIService) GenerateHint(title, content, sampleTestCases, modelType string) (string, error) {
+	var client *openai.Client
+	if modelType == "qwen" {
+		client = s.clientQwen
+	} else {
+		client = s.clientDeepseek
+	}
+
+	var model string
+	if modelType == "qwen" {
+		model = "qwen2.5-14b-instruct-1m"
+	} else {
+		model = "deepseek-chat"
+	}
+
 	prompt := fmt.Sprintf(`你是一个大学算法课的老师，现在有算法题具体信息如下：
 
 题目：%s
@@ -51,12 +72,12 @@ func (s *AIService) GenerateHint(title, content, sampleTestCases string) (string
 3. 可读性良好
 4. 务必使用中文描述`, title, content, sampleTestCases)
 
-	completion, err := s.client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+	completion, err := client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage("你是一个专业的算法工程师，精通各种编程语言和算法。请生成最优时空复杂度的代码来解决问题。"),
+			openai.SystemMessage("你是一个大学算法课的老师，你需要通过语言引导学生做出正确的答案。"),
 			openai.UserMessage(prompt),
 		}),
-		Model: openai.F("qwen-plus"),
+		Model: openai.F(model),
 	})
 
 	if err != nil {
@@ -70,11 +91,11 @@ func (s *AIService) GenerateHint(title, content, sampleTestCases string) (string
 	return completion.Choices[0].Message.Content, nil
 }
 
-func (s *AIService) CorrectCode(recordID, problemID uint, language, typedCode string) (string, error) {
+func (s *AIService) CorrectCode(recordID, problemID uint, language, typedCode string) (map[string]interface{}, error) {
 	var problem models.Problem
 	err := s.db.Model(&models.Problem{}).First(&problem, problemID).Error
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	prompt := fmt.Sprintf(`作为一个专业的算法工程师，请修改以下已有代码解答问题：
@@ -95,35 +116,57 @@ func (s *AIService) CorrectCode(recordID, problemID uint, language, typedCode st
 5. 请不要删除被修改的代码片段，而是将修改后的代码片段添加到被修改的代码片段下方，并添加注释说明修改原因，该注释需要以“AI Comment：”作为前缀，注释中不要出现prompt相关的内容
 
 只需要返回修改后代码，不需要其他解释，不需要测试用例的示例，也不需要用markdown格式来返回代码，直接返回即可。`, problem.Title, language, problem.Content, typedCode, problem.SampleTestcases)
-	completion, err := s.client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+	completionQwen, err := s.clientQwen.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage("你是一个专业的算法工程师，精通各种编程语言和算法。请生成最优时空复杂度的代码来解决问题。"),
 			openai.UserMessage(prompt),
 		}),
-		Model: openai.F("qwen-plus"),
+		Model: openai.F("qwen2.5-14b-instruct-1m"),
 	})
 
 	if err != nil {
-		return "", fmt.Errorf("AI service error: %v", err)
+		return nil, fmt.Errorf("qwen AI service error: %v", err)
 	}
 
-	if len(completion.Choices) == 0 {
-		return "", fmt.Errorf("no response from AI service")
+	if len(completionQwen.Choices) == 0 {
+		return nil, fmt.Errorf("no response from Qwen AI service")
 	}
 
-	err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Update("corrected_code", completion.Choices[0].Message.Content).Error
+	completionDeepseek, err := s.clientDeepseek.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage("你是一个专业的算法工程师，精通各种编程语言和算法。请生成最优时空复杂度的代码来解决问题。"),
+			openai.UserMessage(prompt),
+		}),
+		Model: openai.F("deepseek-chat"),
+	})
+
 	if err != nil {
-		return "", fmt.Errorf("set corrected_code error: %v", err)
+		return nil, fmt.Errorf("deepseek AI service error: %v", err)
 	}
 
-	return completion.Choices[0].Message.Content, nil
+	if len(completionQwen.Choices) == 0 {
+		return nil, fmt.Errorf("no response from Deepseek AI service")
+	}
+
+	err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Updates(map[string]interface{}{
+		"deepseek_corrected_code": completionDeepseek.Choices[0].Message.Content,
+		"qwen_corrected_code":     completionQwen.Choices[0].Message.Content,
+	}).Error
+	if err != nil {
+		return nil, fmt.Errorf("set corrected_code error: %v", err)
+	}
+
+	return map[string]interface{}{
+		"deepseek_corrected_code": completionDeepseek.Choices[0].Message.Content,
+		"qwen_corrected_code":     completionQwen.Choices[0].Message.Content,
+	}, nil
 }
 
-func (s *AIService) AnalyzeCode(recordID, problemID uint, language, typedCode string) (string, error) {
+func (s *AIService) AnalyzeCode(recordID, problemID uint, language, typedCode string) (map[string]interface{}, error) {
 	var problem models.Problem
 	err := s.db.Model(&models.Problem{}).First(&problem, problemID).Error
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	prompt := fmt.Sprintf(`你是一个大学算法课的老师，请分析以下错误代码：
@@ -147,35 +190,71 @@ func (s *AIService) AnalyzeCode(recordID, problemID uint, language, typedCode st
 
 **AI讲师分析**：
 {AI讲师分析}`, problem.Title, language, problem.Content, typedCode, problem.SampleTestcases)
-	completion, err := s.client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+	completionQwen, err := s.clientQwen.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage("你是一个大学的算法课老师，请对同学们的错误代码片段和对应的题目进行分析。"),
 			openai.UserMessage(prompt),
 		}),
-		Model: openai.F("qwen-plus"),
+		Model: openai.F("qwen2.5-14b-instruct-1m"),
 	})
 
 	if err != nil {
-		return "", fmt.Errorf("AI service error: %v", err)
+		return nil, fmt.Errorf("qwen AI service error: %v", err)
 	}
 
-	if len(completion.Choices) == 0 {
-		return "", fmt.Errorf("no response from AI service")
+	if len(completionQwen.Choices) == 0 {
+		return nil, fmt.Errorf("no response from Qwen AI service")
 	}
 
-	err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Update("wrong_reason_and_analyze", completion.Choices[0].Message.Content).Error
+	completionDeepseek, err := s.clientDeepseek.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage("你是一个大学的算法课老师，请对同学们的错误代码片段和对应的题目进行分析。"),
+			openai.UserMessage(prompt),
+		}),
+		Model: openai.F("deepseek-chat"),
+	})
+
 	if err != nil {
-		return "", fmt.Errorf("set wrong_reason_and_analyze error: %v", err)
+		return nil, fmt.Errorf("deepseek AI service error: %v", err)
 	}
 
-	return completion.Choices[0].Message.Content, nil
+	if len(completionQwen.Choices) == 0 {
+		return nil, fmt.Errorf("no response from Deepseek AI service")
+	}
+
+	err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Updates(map[string]interface{}{
+		"qwen_wrong_reason_and_analyze":     completionQwen.Choices[0].Message.Content,
+		"deepseek_wrong_reason_and_analyze": completionDeepseek.Choices[0].Message.Content,
+	}).Error
+	if err != nil {
+		return nil, fmt.Errorf("set wrong_reason_and_analyze error: %v", err)
+	}
+
+	return map[string]interface{}{
+		"qwen_wrong_reason_and_analyze":     completionQwen.Choices[0].Message.Content,
+		"deepseek_wrong_reason_and_analyze": completionDeepseek.Choices[0].Message.Content,
+	}, nil
 }
 
-func (s *AIService) Chat(problemID uint, typedCode, question string) (string, error) {
+func (s *AIService) Chat(problemID uint, typedCode, question, modelType string) (string, error) {
 	var problem models.Problem
 	err := s.db.Model(&models.Problem{}).First(&problem, problemID).Error
 	if err != nil {
 		return "", err
+	}
+
+	var client *openai.Client
+	if modelType == "qwen" {
+		client = s.clientQwen
+	} else {
+		client = s.clientDeepseek
+	}
+
+	var model string
+	if modelType == "qwen" {
+		model = "qwen2.5-14b-instruct-1m"
+	} else {
+		model = "deepseek-chat"
 	}
 
 	prompt := fmt.Sprintf(`你是一个大学算法课的AI助教，请基于以下题目信息，回答学生的问题：
@@ -190,12 +269,12 @@ func (s *AIService) Chat(problemID uint, typedCode, question string) (string, er
 
 请提供专业、准确、有教育意义的回答，帮助学生理解题目和相关知识点。`, problem.Title, problem.Content, problem.SampleTestcases, typedCode, question)
 
-	completion, err := s.client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+	completion, err := client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage("你是一个大学算法课的AI助教，你的任务是帮助学生理解算法题目，解答他们的疑问，并提供有教育意义的指导。"),
 			openai.UserMessage(prompt),
 		}),
-		Model: openai.F("qwen-plus"),
+		Model: openai.F(model),
 	})
 
 	if err != nil {

@@ -23,6 +23,7 @@ type GenerateCodeRequest struct {
 	Title           string `json:"title" binding:"required"`
 	Content         string `json:"content" binding:"required"`
 	SampleTestcases string `json:"sample_testcases" binding:"required"`
+	ModelType       string `json:"model_type" binding:"required"`
 }
 
 type CorrectCodeRequest struct {
@@ -43,6 +44,7 @@ type ChatRequest struct {
 	ProblemID uint   `json:"problem_id" binding:"required"`
 	Question  string `json:"question" binding:"required"`
 	TypedCode string `json:"typed_code" binding:"required"`
+	ModelType string `json:"model_type" binding:"required"`
 }
 
 func (c *AIController) GenerateHint(ctx *gin.Context) {
@@ -52,7 +54,7 @@ func (c *AIController) GenerateHint(ctx *gin.Context) {
 		return
 	}
 
-	code, err := c.Service.GenerateHint(req.Title, req.Content, req.SampleTestcases)
+	code, err := c.Service.GenerateHint(req.Title, req.Content, req.SampleTestcases, req.ModelType)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("生成代码失败: %v", err)))
@@ -71,16 +73,14 @@ func (c *AIController) CorrectCode(ctx *gin.Context) {
 		return
 	}
 
-	code, err := c.Service.CorrectCode(req.RecordID, req.ProblemID, req.Language, req.TypedCode)
+	response, err := c.Service.CorrectCode(req.RecordID, req.ProblemID, req.Language, req.TypedCode)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("生成代码失败: %v", err)))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success(gin.H{
-		"code": code,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success(response))
 }
 
 func (c *AIController) AnalyzeCode(ctx *gin.Context) {
@@ -90,14 +90,12 @@ func (c *AIController) AnalyzeCode(ctx *gin.Context) {
 		return
 	}
 
-	message, err := c.Service.AnalyzeCode(req.RecordID, req.ProblemID, req.Language, req.TypedCode)
+	response, err := c.Service.AnalyzeCode(req.RecordID, req.ProblemID, req.Language, req.TypedCode)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("生成代码失败: %v", err)))
 		return
 	}
-	ctx.JSON(http.StatusOK, utils.Success(gin.H{
-		"message": message,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success(response))
 }
 
 func (c *AIController) Chat(ctx *gin.Context) {
@@ -107,7 +105,7 @@ func (c *AIController) Chat(ctx *gin.Context) {
 		return
 	}
 
-	message, err := c.Service.Chat(req.ProblemID, req.TypedCode, req.Question)
+	message, err := c.Service.Chat(req.ProblemID, req.TypedCode, req.Question, req.ModelType)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("问答异常: %v", err)))
 		return
