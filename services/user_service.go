@@ -135,7 +135,7 @@ func (s *UserService) GetCourseTryRecords(courseID, userID uint) ([]map[string]i
 		Joins("JOIN knowledge_points ON user_problems.knowledge_point_id = knowledge_points.id").
 		Joins("JOIN problems ON user_problems.problem_id = problems.id").
 		Where("knowledge_point_id in (?) AND user_id = ?", knowledge_point_ids, userID).
-		Find(&records).
+		Scan(&records).
 		Error
 	if err != nil {
 		return nil, err
@@ -228,6 +228,7 @@ func (s *UserService) GetUserListByCourseAndClass(classID, courseID uint) ([]map
 		}
 
 		result[i] = map[string]interface{}{
+			"user_id": 		user.ID,
 			"student_id":   user.StudentID,
 			"name":         user.Name,
 			"solved_count": solvedCount,
