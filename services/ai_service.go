@@ -13,10 +13,10 @@ import (
 )
 
 type AIServiceInterface interface {
-	GenerateCode(title string, language string, content string, sampleTestCases string) (string, error)
-	CorrectCode(recordID, problemID uint, lang string, typedCode string) (string, error)
-	AnalyzeCode(recordID, problemID uint, lang string, typedCode string) (string, error)
-	Chat(problemID uint, typedCode string, question string) (string, error)
+	GenerateHint(title, content, sampleTestCases string) (string, error)
+	CorrectCode(recordID, problemID uint, lang, typedCode string) (string, error)
+	AnalyzeCode(recordID, problemID uint, lang, typedCode string) (string, error)
+	Chat(problemID uint, typedCode, question string) (string, error)
 }
 
 type AIService struct {
@@ -36,22 +36,20 @@ func NewAIService(db *gorm.DB) *AIService {
 	}
 }
 
-func (s *AIService) GenerateCode(title string, language string, content string, sampleTestCases string) (string, error) {
-	prompt := fmt.Sprintf(`作为一个专业的算法工程师，请根据以下要求生成代码解答问题：
+func (s *AIService) GenerateHint(title, content, sampleTestCases string) (string, error) {
+	prompt := fmt.Sprintf(`你是一个大学算法课的老师，现在有算法题具体信息如下：
 
 题目：%s
-编程语言：%s
 题目内容：%s
 
 示例测试用例：
 %v
 
-请生成符合要求的代码，并确保：
-1. 代码正确性
-2. 代码时空复杂度最优
-3. 代码可读性
-
-请直接返回代码，不需要其他解释。`, title, language, content, sampleTestCases)
+请生成符合以下要求的作答提示文字：
+1. 这段提示需要具有引导作用，不要给出过于详细的作答思路描述，只需要给出大体的思考方向，例如使用某一种算法，引导出问题的解决思路即可
+2. 时空复杂度最优
+3. 可读性良好
+4. 务必使用中文描述`, title, content, sampleTestCases)
 
 	completion, err := s.client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
@@ -72,7 +70,7 @@ func (s *AIService) GenerateCode(title string, language string, content string, 
 	return completion.Choices[0].Message.Content, nil
 }
 
-func (s *AIService) CorrectCode(recordID, problemID uint, language string, typedCode string) (string, error) {
+func (s *AIService) CorrectCode(recordID, problemID uint, language, typedCode string) (string, error) {
 	var problem models.Problem
 	err := s.db.Model(&models.Problem{}).First(&problem, problemID).Error
 	if err != nil {
@@ -121,7 +119,7 @@ func (s *AIService) CorrectCode(recordID, problemID uint, language string, typed
 	return completion.Choices[0].Message.Content, nil
 }
 
-func (s *AIService) AnalyzeCode(recordID, problemID uint, language string, typedCode string) (string, error) {
+func (s *AIService) AnalyzeCode(recordID, problemID uint, language, typedCode string) (string, error) {
 	var problem models.Problem
 	err := s.db.Model(&models.Problem{}).First(&problem, problemID).Error
 	if err != nil {
@@ -173,7 +171,7 @@ func (s *AIService) AnalyzeCode(recordID, problemID uint, language string, typed
 	return completion.Choices[0].Message.Content, nil
 }
 
-func (s *AIService) Chat(problemID uint, typedCode string, question string) (string, error) {
+func (s *AIService) Chat(problemID uint, typedCode, question string) (string, error) {
 	var problem models.Problem
 	err := s.db.Model(&models.Problem{}).First(&problem, problemID).Error
 	if err != nil {

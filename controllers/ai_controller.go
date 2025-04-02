@@ -9,13 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type CodeGenerationRequest struct {
-	Title           string // 题目
-	Language        string // 编程语言
-	Content         string // 题目内容
-	SampleTestcases string // 示例测试用例
-}
-
 type AIController struct {
 	Service services.AIServiceInterface
 }
@@ -28,20 +21,19 @@ func NewAIController(service services.AIServiceInterface) *AIController {
 
 type GenerateCodeRequest struct {
 	Title           string `json:"title" binding:"required"`
-	Language        string `json:"language" binding:"required"`
 	Content         string `json:"content" binding:"required"`
 	SampleTestcases string `json:"sample_testcases" binding:"required"`
 }
 
 type CorrectCodeRequest struct {
-	RecordID uint `json:"record_id" binding:"required"`
+	RecordID  uint   `json:"record_id" binding:"required"`
 	ProblemID uint   `json:"problem_id" binding:"required"`
 	Language  string `json:"language" binding:"required"`
 	TypedCode string `json:"typed_code" binding:"required"`
 }
 
 type AnalyzeCodeRequest struct {
-	RecordID uint `json:"record_id" binding:"required"`
+	RecordID  uint   `json:"record_id" binding:"required"`
 	ProblemID uint   `json:"problem_id" binding:"required"`
 	Language  string `json:"language" binding:"required"`
 	TypedCode string `json:"typed_code" binding:"required"`
@@ -53,14 +45,14 @@ type ChatRequest struct {
 	TypedCode string `json:"typed_code" binding:"required"`
 }
 
-func (c *AIController) GenerateCode(ctx *gin.Context) {
+func (c *AIController) GenerateHint(ctx *gin.Context) {
 	var req GenerateCodeRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
 		return
 	}
 
-	code, err := c.Service.GenerateCode(req.Title, req.Language, req.Content, req.SampleTestcases)
+	code, err := c.Service.GenerateHint(req.Title, req.Content, req.SampleTestcases)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("生成代码失败: %v", err)))

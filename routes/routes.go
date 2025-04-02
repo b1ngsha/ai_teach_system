@@ -47,7 +47,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		// AI 相关路由
 		ai := auth.Group("/ai")
 		{
-			ai.POST("/generate_code/", aiController.GenerateCode)
+			ai.POST("/generate_hint/", aiController.GenerateHint)
 			ai.POST("/correct_code/", aiController.CorrectCode)
 			ai.POST("/analyze_code/", aiController.AnalyzeCode)
 			ai.POST("/chat/", aiController.Chat)
