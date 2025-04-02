@@ -147,7 +147,7 @@ func (s *UserService) GetCourseTryRecords(courseID, userID uint) ([]map[string]i
 
 func (s *UserService) GetTryRecordDetail(recordID uint) (map[string]interface{}, error) {
 	var result map[string]interface{}
-	err := s.db.Select("problems.title, problems.title_cn, problems.content, problems.content_cn, problems.difficulty, user_problems.typed_code, user_problems.wrong_reason_and_analyze, user_problems.corrected_code").
+	err := s.db.Select("problems.title, problems.title_cn, problems.content, problems.content_cn, problems.difficulty, user_problems.typed_code, user_problems.deepseek_wrong_reason_and_analyze, qwen_wrong_reason_and_analyze, user_problems.qwen_corrected_code, user_problems.deepseek_corrected_code").
 		Model(&models.UserProblem{}).
 		Joins("JOIN problems ON user_problems.problem_id = problems.id").
 		Where("user_problems.id = ?", recordID).
