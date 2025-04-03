@@ -5,6 +5,7 @@ import (
 	"ai_teach_system/utils"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -112,5 +113,23 @@ func (c *AIController) Chat(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, utils.Success(gin.H{
 		"message": message,
+	}))
+}
+
+func (c *AIController) SuggestKnowledgePointTags(ctx *gin.Context) {
+	knowledgePointID, err := strconv.ParseUint(ctx.Param("knowledge_point_id"), 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
+		return
+	}
+
+	suggestedTags, err := c.Service.SuggestKnowledgePointTags(uint(knowledgePointID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("推荐标签失败: %v", err)))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success(gin.H{
+		"tags": suggestedTags,
 	}))
 }

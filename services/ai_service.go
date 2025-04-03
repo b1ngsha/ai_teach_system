@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
@@ -17,6 +18,7 @@ type AIServiceInterface interface {
 	CorrectCode(recordID, problemID uint, lang, typedCode string) (map[string]interface{}, error)
 	AnalyzeCode(recordID, problemID uint, lang, typedCode string) (map[string]interface{}, error)
 	Chat(problemID uint, typedCode, question, modelType string) (string, error)
+	SuggestKnowledgePointTags(knowledgePointID uint) ([]models.Tag, error)
 }
 
 type AIService struct {
@@ -113,7 +115,7 @@ func (s *AIService) CorrectCode(recordID, problemID uint, language, typedCode st
 2. 代码时空复杂度最优
 3. 代码可读性
 4. 尽量在已有代码的基础上进行修改，非必要情况下请勿大规模修改代码逻辑
-5. 请不要删除被修改的代码片段，而是将修改后的代码片段添加到被修改的代码片段下方，并添加注释说明修改原因，该注释需要以“AI Comment：”作为前缀，注释中不要出现prompt相关的内容
+5. 请不要删除被修改的代码片段，而是将修改后的代码片段添加到被修改的代码片段下方，并添加注释说明修改原因，该注释需要以"AI Comment："作为前缀，注释中不要出现prompt相关的内容
 
 只需要返回修改后代码，不需要其他解释，不需要测试用例的示例，也不需要用markdown格式来返回代码，直接返回即可。`, problem.Title, language, problem.Content, typedCode, problem.SampleTestcases)
 	completionQwen, err := s.clientQwen.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
@@ -180,8 +182,8 @@ func (s *AIService) AnalyzeCode(recordID, problemID uint, language, typedCode st
 %v
 
 请生成代码和题目分析，并确保分为两个点进行输出：
-第一点为指出代码的错误原因（指定标题为“错误分析”）、
-第二点为分析本题目所涉及的计算机领域的知识点（指定标题为“AI讲师分析”），
+第一点为指出代码的错误原因（指定标题为"错误分析"）、
+第二点为分析本题目所涉及的计算机领域的知识点（指定标题为"AI讲师分析"），
 注意，不要返回正确的代码示例，仅仅进行分析即可。
 
 同时，请一定确保你生成的响应格式如下（在花括号内填入具体的内容）：
@@ -286,4 +288,88 @@ func (s *AIService) Chat(problemID uint, typedCode, question, modelType string) 
 	}
 
 	return completion.Choices[0].Message.Content, nil
+}
+
+func (s *AIService) SuggestKnowledgePointTags(knowledgePointID uint) ([]models.Tag, error) {
+	var knowledgePoint models.KnowledgePoint
+	if err := s.db.First(&knowledgePoint, knowledgePointID).Error; err != nil {
+		return nil, fmt.Errorf("未找到知识点: %v", err)
+	}
+
+	// 获取所有已有的标签
+	var existingTags []models.Tag
+	if err := s.db.Model(&models.Tag{}).Find(&existingTags).Error; err != nil {
+		return nil, fmt.Errorf("获取已有标签失败: %v", err)
+	}
+
+	if len(existingTags) == 0 {
+		return nil, fmt.Errorf("当前暂无标签")
+	}
+
+	// 构建标签上下文
+	var tagsContext string
+	for i, tag := range existingTags {
+		if i > 0 {
+			tagsContext += "\n"
+		}
+		tagsContext += fmt.Sprintf("%d. %s（%s）", i+1, tag.Name, tag.NameCn)
+	}
+
+	prompt := fmt.Sprintf(`作为一个专业的计算机教育领域AI助手，请从以下已有标签中为知识点内容选择最相关的标签：
+
+知识点：%s
+
+已有标签列表：
+%s
+
+请从上述已有标签中选择3-5个最相关的标签。请仅返回标签的序号（每行一个数字），例如：
+1
+3
+5
+
+注意：
+1. 只能从已有标签中选择
+2. 选择最能反映知识点核心内容的标签
+3. 确保选择的标签数量在3-5个之间`, knowledgePoint.Name, tagsContext)
+
+	completion, err := s.clientQwen.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage("你是一个专业的计算机教育领域AI助手，精通计算机课程知识点的分类和标签关联。"),
+			openai.UserMessage(prompt),
+		}),
+		Model: openai.F("qwen2.5-14b-instruct-1m"),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("AI 服务错误: %v", err)
+	}
+
+	if len(completion.Choices) == 0 {
+		return nil, fmt.Errorf("AI 服务未返回结果")
+	}
+
+	// 解析返回的标签序号
+	var selectedTags []models.Tag
+	lines := strings.Split(strings.TrimSpace(completion.Choices[0].Message.Content), "\n")
+
+	for _, line := range lines {
+		index := 0
+		_, err := fmt.Sscanf(strings.TrimSpace(line), "%d", &index)
+		if err != nil {
+			continue
+		}
+
+		// 调整为0基索引
+		index--
+
+		if index >= 0 && index < len(existingTags) {
+			selectedTags = append(selectedTags, existingTags[index])
+		}
+	}
+
+	if len(selectedTags) == 0 {
+		return nil, fmt.Errorf("AI 未能选择合适的标签")
+	}
+
+	return selectedTags, nil
 }

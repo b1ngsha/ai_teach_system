@@ -89,6 +89,12 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 					// 获取知识点下的题目列表
 					problems.GET("/", problemController.GetKnowledgePointProblems)
 				}
+
+				// AI 相关路由
+				ai := knowledgePoints.Group("/:knowledge_point_id/ai")
+				{
+					ai.GET("/suggest_tags/", aiController.SuggestKnowledgePointTags)
+				}
 			}
 
 			// 班级相关路由
