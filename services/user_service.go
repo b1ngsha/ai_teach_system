@@ -298,3 +298,82 @@ func (s *UserService) GetTryRecords(userID uint) ([]map[string]interface{}, erro
 
 	return records, err
 }
+
+func (s *UserService) UpdateUser(userID uint, updates map[string]interface{}) error {
+	// 如果要更新用户名、学号，需要检查唯一性
+	if username, ok := updates["username"].(string); ok {
+		var count int64
+		if err := s.db.Model(&models.User{}).
+			Where("username = ? AND id != ?", username, userID).
+			Count(&count).Error; err != nil {
+			return fmt.Errorf("检查用户名失败: %v", err)
+		}
+		if count > 0 {
+			return errors.New("用户名已存在")
+		}
+	}
+
+	if studentID, ok := updates["student_id"].(string); ok {
+		var count int64
+		if err := s.db.Model(&models.User{}).
+			Where("student_id = ? AND id != ?", studentID, userID).
+			Count(&count).Error; err != nil {
+			return fmt.Errorf("检查学号失败: %v", err)
+		}
+		if count > 0 {
+			return errors.New("学号已存在")
+		}
+	}
+
+	// 如果要更新班级，检查班级是否存在
+	if classID, ok := updates["class_id"].(uint); ok {
+		var class models.Class
+		if err := s.db.First(&class, classID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("指定的班级不存在")
+			}
+			return fmt.Errorf("查询班级信息失败: %v", err)
+		}
+	}
+
+	// 如果包含密码更新，需要先加密
+	if password, ok := updates["password"].(string); ok {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("密码加密失败: %v", err)
+		}
+		updates["password"] = string(hashedPassword)
+	}
+
+	// 更新用户信息
+	if err := s.db.Model(&models.User{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
+		return fmt.Errorf("更新用户信息失败: %v", err)
+	}
+
+	return nil
+}
+
+func (s *UserService) DeleteUser(userID uint) error {
+	var user models.User
+	if err := s.db.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("用户不存在")
+		}
+		return fmt.Errorf("查询用户信息失败: %v", err)
+	}
+
+	// 开启事务删除用户及相关数据
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 删除用户的做题记录
+		if err := tx.Where("user_id = ?", userID).Delete(&models.UserProblem{}).Error; err != nil {
+			return fmt.Errorf("删除用户做题记录失败: %v", err)
+		}
+
+		// 删除用户
+		if err := tx.Delete(&user).Error; err != nil {
+			return fmt.Errorf("删除用户失败: %v", err)
+		}
+
+		return nil
+	})
+}

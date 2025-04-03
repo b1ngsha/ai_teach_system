@@ -167,5 +167,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		users.POST("/login/", userController.Login)
 		users.POST("/register/", userController.Register)
 		users.POST("/select_course/", userController.SelectCourse)
+		users.PUT("/:id/", userController.UpdateUser)
+		users.DELETE("/:id/", userController.DeleteUser)
 	}
 }

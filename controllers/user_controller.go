@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"ai_teach_system/models"
 	"ai_teach_system/services"
 	"ai_teach_system/utils"
 	"fmt"
@@ -29,6 +30,15 @@ type SelectCourseRequest struct {
 
 type ResetPasswordRequest struct {
 	Password string `json:"password" binding:"required"`
+}
+
+type UpdateUserRequest struct {
+	Username  string      `json:"username"`
+	Password  string      `json:"password"`
+	Name      string      `json:"name"`
+	StudentID string      `json:"student_id"`
+	Role      models.Role `json:"role"`
+	ClassID   uint        `json:"class_id"`
 }
 
 type UserController struct {
@@ -223,4 +233,61 @@ func (c *UserController) GetTryRecords(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, utils.Success(result))
+}
+
+func (c *UserController) UpdateUser(ctx *gin.Context) {
+	userID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的用户ID"))
+		return
+	}
+
+	var req UpdateUserRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
+		return
+	}
+
+	// 构建更新字段
+	updates := make(map[string]interface{})
+	if req.Username != "" {
+		updates["username"] = req.Username
+	}
+	if req.Password != "" {
+		updates["password"] = req.Password
+	}
+	if req.Name != "" {
+		updates["name"] = req.Name
+	}
+	if req.StudentID != "" {
+		updates["student_id"] = req.StudentID
+	}
+	if req.Role != "" {
+		updates["role"] = req.Role
+	}
+	if req.ClassID != 0 {
+		updates["class_id"] = req.ClassID
+	}
+
+	if err := c.userService.UpdateUser(uint(userID), updates); err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(err.Error()))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success(nil))
+}
+
+func (c *UserController) DeleteUser(ctx *gin.Context) {
+	userID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的用户ID"))
+		return
+	}
+
+	if err := c.userService.DeleteUser(uint(userID)); err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(err.Error()))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success(nil))
 }
