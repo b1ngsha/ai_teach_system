@@ -4,6 +4,7 @@ import (
 	"ai_teach_system/constants"
 	"ai_teach_system/models"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -19,6 +20,21 @@ type AIServiceInterface interface {
 	AnalyzeCode(recordID, problemID uint, lang, typedCode string) (map[string]interface{}, error)
 	Chat(problemID uint, typedCode, question, modelType string) (string, error)
 	SuggestKnowledgePointTags(knowledgePointID uint) ([]models.Tag, error)
+	JudgeCode(problemID uint, lang, code string) (map[string]interface{}, error)
+}
+
+// JudgeResult 定义判题结果的结构
+type JudgeResult struct {
+	Status      string  `json:"status"`      // Accepted, Wrong Answer, Time Limit Exceeded, etc.
+	TimeUsed    float64 `json:"time_used"`   // 运行时间(ms)
+	MemoryUsed  float64 `json:"memory_used"` // 内存使用(MB)
+	TestResults []struct {
+		Input          string `json:"input"`
+		ExpectedOutput string `json:"expected_output"`
+		ActualOutput   string `json:"actual_output"`
+		Status         string `json:"status"`
+		Message        string `json:"message"`
+	} `json:"test_results"`
 }
 
 type AIService struct {
@@ -372,4 +388,94 @@ func (s *AIService) SuggestKnowledgePointTags(knowledgePointID uint) ([]models.T
 	}
 
 	return selectedTags, nil
+}
+
+func (s *AIService) JudgeCode(problemID uint, lang, code string) (map[string]interface{}, error) {
+	var problem models.Problem
+	if err := s.db.First(&problem, problemID).Error; err != nil {
+		return nil, fmt.Errorf("题目不存在: %v", err)
+	}
+
+	// 构建判题提示
+	prompt := fmt.Sprintf(`作为一个专业的编程题目评测系统，请对以下代码进行评测：
+
+题目信息：
+%s
+
+提交的代码：
+%s
+
+测试用例：
+%s
+
+判题要求：
+1. 时间限制：%dms
+2. 内存限制：%dMB
+3. 编程语言：%s
+
+请确保严格按照以下JSON格式返回判题结果，不要出现任何其他信息，不需要解释说明，只返回以下格式的JSON即可：
+{
+    "status": "判题状态(SUCCESS/FAILED/Time Limit Exceeded/Memory Limit Exceeded/Runtime Error)",
+    "time_used": 实际运行时间(ms),
+    "memory_used": 实际使用内存(MB),
+    "test_results": [
+        {
+            "input": "测试用例输入",
+            "expected_output": "期望输出",
+            "actual_output": "实际输出",
+            "status": "用例状态",
+            "message": "错误信息（如果有）"
+        }
+    ]
+}
+
+注意：
+1. 必须验证代码的正确性
+2. 必须检查时间和内存限制
+3. 必须测试所有测试用例
+4. 必须按照规定格式返回结果
+5. 对于每个测试用例，都要实际运行代码并比较结果`,
+		problem.Content,
+		code,
+		problem.TestCases,
+		problem.TimeLimit,
+		problem.MemoryLimit,
+		lang,
+	)
+
+	completion, err := s.clientQwen.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage("你是一个专业的编程题目评测系统，你需要严格按照题目要求对代码进行评测，并返回规范的评测结果。"),
+			openai.UserMessage(prompt),
+		}),
+		Model: openai.F("qwen2.5-14b-instruct-1m"),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("AI 服务错误: %v", err)
+	}
+
+	if len(completion.Choices) == 0 {
+		return nil, fmt.Errorf("AI 服务未返回结果")
+	}
+
+	// 替换掉markdown格式
+	content := completion.Choices[0].Message.Content
+	content = strings.ReplaceAll(content, "```json", "")
+	content = strings.ReplaceAll(content, "```", "")
+	content = strings.TrimSpace(content)
+
+	// 解析 AI 返回的判题结果
+	var result JudgeResult
+	err = json.Unmarshal([]byte(content), &result)
+	if err != nil {
+		return nil, fmt.Errorf("解析判题结果失败: %v", err)
+	}
+
+	return map[string]interface{}{
+		"status":       result.Status,
+		"time_used":    result.TimeUsed,
+		"memory_used":  result.MemoryUsed,
+		"test_results": result.TestResults,
+	}, nil
 }

@@ -48,6 +48,12 @@ type ChatRequest struct {
 	ModelType string `json:"model_type" binding:"required"`
 }
 
+type JudgeCodeRequest struct {
+	ProblemID uint   `json:"problem_id" binding:"required"`
+	Language  string `json:"language" binding:"required"`
+	Code      string `json:"code" binding:"required"`
+}
+
 func (c *AIController) GenerateHint(ctx *gin.Context) {
 	var req GenerateCodeRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -132,4 +138,20 @@ func (c *AIController) SuggestKnowledgePointTags(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success(gin.H{
 		"tags": suggestedTags,
 	}))
+}
+
+func (c *AIController) JudgeCode(ctx *gin.Context) {
+	var req JudgeCodeRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
+		return
+	}
+
+	result, err := c.Service.JudgeCode(req.ProblemID, req.Language, req.Code)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("判题失败: %v", err)))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success(result))
 }
