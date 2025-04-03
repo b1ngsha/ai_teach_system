@@ -18,6 +18,7 @@ type LeetCodeServiceInterface interface {
 	RunTestCase(userID uint, questionId int, code string, lang string) (map[string]interface{}, error)
 	Submit(userID uint, lang string, knowledge_point_id uint, question_id int, code string) (map[string]interface{}, error)
 	Check(userID uint, runCodeID string, test bool) (map[string]interface{}, error)
+	GetRecommendedProblem(currentProblemID uint, userID uint) (*models.Problem, error)
 }
 
 type LeetCodeService struct {
@@ -307,14 +308,79 @@ func (s *LeetCodeService) Check(userID uint, runCodeID string, test bool) (map[s
 			return result, nil
 		}
 
-		err = s.db.Model(&models.UserProblem{}).
-			Where("user_id = ? AND submission_id = ?", userID, runCodeID).
-			Update("status", status).
-			Error
+		var record models.UserProblem
+		err = s.db.Where("user_id = ? AND submission_id = ?", userID, runCodeID).First(&record).Error
 		if err != nil {
 			return nil, err
+		}
+
+		err = s.db.Model(&record).Update("status", status).Error
+		if err != nil {
+			return nil, err
+		}
+
+		// 如果解答成功，获取推荐题目
+		if status == models.ProblemStatusSolved {
+			recommendedProblem, err := s.GetRecommendedProblem(record.ProblemID, userID)
+			if err == nil && recommendedProblem != nil {
+				result["recommended_problem"] = map[string]interface{}{
+					"id":         recommendedProblem.ID,
+					"title":      recommendedProblem.Title,
+					"title_cn":   recommendedProblem.TitleCn,
+					"difficulty": recommendedProblem.Difficulty,
+				}
+			}
 		}
 	}
 
 	return result, nil
+}
+
+func (s *LeetCodeService) GetRecommendedProblem(currentProblemID uint, userID uint) (*models.Problem, error) {
+	var currentProblem models.Problem
+	if err := s.db.Preload("Tags").First(&currentProblem, currentProblemID).Error; err != nil {
+		return nil, err
+	}
+
+	// 获取用户已解决的题目ID列表
+	var solvedProblemIDs []uint
+	if err := s.db.Model(&models.UserProblem{}).
+		Where("user_id = ? AND status = ?", userID, models.ProblemStatusSolved).
+		Pluck("problem_id", &solvedProblemIDs).Error; err != nil {
+		return nil, err
+	}
+
+	// 构建查询条件：相同难度，包含相同标签，且用户未解决
+	var recommendedProblem models.Problem
+	query := s.db.Model(&models.Problem{}).
+		Joins("LEFT JOIN problem_tag pt ON problems.id = pt.problem_id").
+		Where("problems.difficulty = ? AND problems.id != ?", currentProblem.Difficulty, currentProblemID)
+
+	// 如果有已解决的题目，排除它们
+	if len(solvedProblemIDs) > 0 {
+		query = query.Where("problems.id NOT IN ?", solvedProblemIDs)
+	}
+
+	// 如果当前题目有标签，优先推荐具有相同标签的题目
+	if len(currentProblem.Tags) > 0 {
+		var tagIDs []uint
+		for _, tag := range currentProblem.Tags {
+			tagIDs = append(tagIDs, tag.ID)
+		}
+		query = query.Where("pt.tag_id IN ?", tagIDs)
+	}
+
+	// 随机选择一道题目
+	if err := query.Order("RAND()").First(&recommendedProblem).Error; err != nil {
+		// 如果没有找到具有相同标签的题目，放宽条件只按难度匹配
+		if err := s.db.Model(&models.Problem{}).
+			Where("difficulty = ? AND id != ?", currentProblem.Difficulty, currentProblemID).
+			Not("id IN ?", solvedProblemIDs).
+			Order("RAND()").
+			First(&recommendedProblem).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	return &recommendedProblem, nil
 }
