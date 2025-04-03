@@ -353,7 +353,7 @@ func (s *LeetCodeService) GetRecommendedProblem(currentProblemID uint, userID ui
 	// 构建查询条件：相同难度，包含相同标签，且用户未解决
 	var recommendedProblem models.Problem
 	query := s.db.Model(&models.Problem{}).
-		Joins("LEFT JOIN problem_tag pt ON problems.id = pt.problem_id").
+		Joins("LEFT JOIN problem_tags pt ON problems.id = pt.problem_id").
 		Where("problems.difficulty = ? AND problems.id != ?", currentProblem.Difficulty, currentProblemID)
 
 	// 如果有已解决的题目，排除它们

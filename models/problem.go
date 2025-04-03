@@ -18,7 +18,7 @@ type Problem struct {
 	Content         string            `json:"content" gorm:"type:text"`
 	ContentCn       string            `json:"content_cn" gorm:"type:text"`
 	SampleTestcases string            `json:"sample_testcases" gorm:"type:text"`
-	Tags            []Tag             `json:"tags" gorm:"many2many:problem_tag;"`
+	Tags            []Tag             `json:"tags" gorm:"many2many:problem_tags;"`
 	Users           []User            `json:"-" gorm:"many2many:user_problems;"`
 	Course          []KnowledgePoint  `json:"-" gorm:"many2many:knowledge_point_problems"`
 }

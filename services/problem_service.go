@@ -44,8 +44,8 @@ func (s *ProblemService) GetCourseProblemList(courseID, userID uint, difficulty 
 	var problems []map[string]interface{}
 	query = s.db.Model(&models.Problem{}).
 		Select("problems.id, leetcode_id, title_slug, title_cn, difficulty").
-		Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
-		Joins("JOIN tags ON problem_tag.tag_id = tags.id").
+		Joins("JOIN problem_tags ON problems.id = problem_tags.problem_id").
+		Joins("JOIN tags ON problem_tags.tag_id = tags.id").
 		Where("problems.id IN (?)", problemIDs)
 	if difficulty != "" {
 		query = query.Where("problems.difficulty = ?", difficulty)
@@ -268,8 +268,8 @@ func (s *ProblemService) GetProblemList(difficulty string, tagID uint) ([]map[st
 	var problems []map[string]interface{}
 	query := s.db.Model(&models.Problem{}).
 		Select("problems.id, leetcode_id, title_slug, title_cn, difficulty, tags.id AS tag_id, tags.name AS tag_name").
-		Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
-		Joins("JOIN tags ON problem_tag.tag_id = tags.id")
+		Joins("JOIN problem_tags ON problems.id = problem_tags.problem_id").
+		Joins("JOIN tags ON problem_tags.tag_id = tags.id")
 
 	if tagID != 0 {
 		query = query.Where("tags.id = ?", tagID)

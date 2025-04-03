@@ -64,8 +64,8 @@ func (s *CourseService) GetCourseDetail(courseID, userID uint) (*models.Course, 
 		// 获取知识点下的总题目数
 		var problemCount int64
 		s.db.Model(&models.Problem{}).
-			Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
-			Joins("JOIN tags ON problem_tag.tag_id = tags.id").
+			Joins("JOIN problem_tags ON problems.id = problem_tags.problem_id").
+			Joins("JOIN tags ON problem_tags.tag_id = tags.id").
 			Where("tags.knowledge_point_id = ?", point.ID).
 			Distinct("problems.id").
 			Count(&problemCount)
@@ -74,8 +74,8 @@ func (s *CourseService) GetCourseDetail(courseID, userID uint) (*models.Course, 
 		var solvedCount int64
 		s.db.Model(&models.UserProblem{}).
 			Joins("JOIN problems ON user_problems.problem_id = problems.id").
-			Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
-			Joins("JOIN tags ON problem_tag.tag_id = tags.id").
+			Joins("JOIN problem_tags ON problems.id = problem_tags.problem_id").
+			Joins("JOIN tags ON problem_tags.tag_id = tags.id").
 			Where("tags.knowledge_point_id = ? AND user_problems.user_id = ? AND user_problems.status = ?",
 				point.ID, userID, models.ProblemStatusSolved).
 			Distinct("user_problems.problem_id").
@@ -110,8 +110,8 @@ func (s *CourseService) GetCourseDetail(courseID, userID uint) (*models.Course, 
 		err := s.db.Model(&models.UserProblem{}).
 			Select("COUNT(*) as total_attempts, COUNT(DISTINCT(problems.id)) as correct_count").
 			Joins("JOIN problems ON user_problems.problem_id = problems.id").
-			Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
-			Joins("JOIN tags ON problem_tag.tag_id = tags.id").
+			Joins("JOIN problem_tags ON problems.id = problem_tags.problem_id").
+			Joins("JOIN tags ON problem_tags.tag_id = tags.id").
 			Where("tags.knowledge_point_id = ? AND user_problems.user_id = ? AND user_problems.status = ?", point.ID, userID, models.ProblemStatusSolved).
 			Row().Scan(&totalAttempts, &correctCount)
 
@@ -137,8 +137,8 @@ func (s *CourseService) GetCourseDetail(courseID, userID uint) (*models.Course, 
 
 	// 获取课程总题目数
 	s.db.Model(&models.Problem{}).
-		Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
-		Joins("JOIN tags ON problem_tag.tag_id = tags.id").
+		Joins("JOIN problem_tags ON problems.id = problem_tags.problem_id").
+		Joins("JOIN tags ON problem_tags.tag_id = tags.id").
 		Joins("JOIN knowledge_points ON tags.knowledge_point_id = knowledge_points.id").
 		Where("knowledge_points.course_id = ?", courseID).
 		Distinct("problems.id").
@@ -149,8 +149,8 @@ func (s *CourseService) GetCourseDetail(courseID, userID uint) (*models.Course, 
 	s.db.Model(&models.UserProblem{}).
 		Select("COUNT(*) as attempted_problems, COUNT(DISTINCT(problems.id)) as correct_count").
 		Joins("JOIN problems ON user_problems.problem_id = problems.id").
-		Joins("JOIN problem_tag ON problems.id = problem_tag.problem_id").
-		Joins("JOIN tags ON problem_tag.tag_id = tags.id").
+		Joins("JOIN problem_tags ON problems.id = problem_tags.problem_id").
+		Joins("JOIN tags ON problem_tags.tag_id = tags.id").
 		Joins("JOIN knowledge_points ON tags.knowledge_point_id = knowledge_points.id").
 		Where("knowledge_points.course_id = ? AND user_problems.user_id = ? AND user_problems.status = ?", courseID, userID, models.ProblemStatusSolved).
 		Row().Scan(&overview.AttemptedProblems, &correctCount)
