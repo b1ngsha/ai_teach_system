@@ -76,11 +76,16 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 				// 获取课程下的知识点列表
 				knowledgePoints.GET("/", courseController.GetKnowledgePoints)
 
+				// 标签相关路由
+				tags := knowledgePoints.Group("/:knowledge_point_id/tags")
+				{
+					// 设置知识点下的标签列表
+					tags.POST("/", problemController.SetKnowledgePointTags)
+				}
+
 				// 题目相关路由
 				problems := knowledgePoints.Group("/:knowledge_point_id/problems")
 				{
-					// 设置知识点下的题目列表
-					problems.POST("/", problemController.SetKnowledgePointProblems)
 					// 获取知识点下的题目列表
 					problems.GET("/", problemController.GetKnowledgePointProblems)
 				}

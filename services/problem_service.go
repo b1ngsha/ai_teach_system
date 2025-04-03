@@ -14,47 +14,54 @@ func NewProblemService(db *gorm.DB) *ProblemService {
 	return &ProblemService{db: db}
 }
 
-func (s *ProblemService) GetCourseProblemList(courseID, userID uint, difficulty models.ProblemDifficulty, knowledgePointID uint) ([]map[string]interface{}, error) {
+func (s *ProblemService) GetCourseProblemList(courseID, userID uint, difficulty models.ProblemDifficulty, knowledgePointID uint, tagID uint) ([]map[string]interface{}, error) {
 	// 获取课程所关联的知识点id列表
 	var knowledgePointIDs []uint
-	err := s.db.Select("id").
+	query := s.db.Select("id").
 		Model(&models.KnowledgePoint{}).
-		Where("course_id = ?", courseID).
-		Scan(&knowledgePointIDs).
-		Error
-	if err != nil {
-		return nil, err
-	}
-
-	// 获取所有关联的知识点下的课程id列表
-	var problemIDs []uint
-	query := s.db.Select("problem_id").Model(&models.KnowledgePointProblems{})
+		Where("course_id = ?", courseID)
 
 	if knowledgePointID != 0 {
-		query = query.Where("knowledge_point_id = ?", knowledgePointID)
-	} else {
-		query = query.Where("knowledge_point_id IN (?)", knowledgePointIDs)
+		query = query.Where("id = ?", knowledgePointID)
 	}
 
-	err = query.Scan(&problemIDs).Error
+	err := query.Scan(&knowledgePointIDs).Error
 	if err != nil {
 		return nil, err
 	}
 
+	// 获取知识点关联的标签
+	var tagIDs []uint
+	if tagID != 0 {
+		tagIDs = append(tagIDs, tagID)
+	} else {
+		err = s.db.Model(&models.KnowledgePointTag{}).
+			Select("tag_id").
+			Where("knowledge_point_id IN ?", knowledgePointIDs).
+			Scan(&tagIDs).Error
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 获取标签关联的题目
 	var problems []map[string]interface{}
 	query = s.db.Model(&models.Problem{}).
-		Select("problems.id, leetcode_id, title_slug, title_cn, difficulty").
+		Select("DISTINCT problems.id, leetcode_id, title_slug, title_cn, difficulty").
 		Joins("JOIN problem_tags ON problems.id = problem_tags.problem_id").
 		Joins("JOIN tags ON problem_tags.tag_id = tags.id").
-		Where("problems.id IN (?)", problemIDs)
+		Where("tags.id IN ?", tagIDs)
+
 	if difficulty != "" {
 		query = query.Where("problems.difficulty = ?", difficulty)
 	}
+
 	err = query.Scan(&problems).Error
 	if err != nil {
 		return nil, err
 	}
 
+	// 获取用户题目状态
 	var problemStatus []map[string]interface{}
 	err = s.db.Model(&models.UserProblem{}).
 		Select("problem_id, status").
@@ -98,12 +105,14 @@ func (s *ProblemService) GetProblemDetail(problemID uint) (map[string]interface{
 		"tags":         problem.Tags,
 	}
 
+	// 获取关联的知识点信息
 	var knowledgePointInfo []map[string]interface{}
 	err = s.db.Model(&models.KnowledgePoint{}).
-		Select("knowledge_points.id, knowledge_points.name").
-		Joins("JOIN knowledge_point_problems ON knowledge_point_problems.problem_id = knowledge_points.id").
-		Joins("JOIN problems ON problems.id = knowledge_point_problems.problem_id").
-		Where("problems.id = ?", problemID).
+		Select("DISTINCT knowledge_points.id, knowledge_points.name, knowledge_points.course_id").
+		Joins("JOIN knowledge_point_tags ON knowledge_point_tags.knowledge_point_id = knowledge_points.id").
+		Joins("JOIN tags ON tags.id = knowledge_point_tags.tag_id").
+		Joins("JOIN problem_tags ON problem_tags.tag_id = tags.id").
+		Where("problem_tags.problem_id = ?", problemID).
 		Scan(&knowledgePointInfo).
 		Error
 	if err != nil {
@@ -114,26 +123,26 @@ func (s *ProblemService) GetProblemDetail(problemID uint) (map[string]interface{
 	return problemMap, nil
 }
 
-func (s *ProblemService) SetKnowledgePointProblems(knowledgePointID uint, problemIDs []uint) (map[string]interface{}, error) {
-	// 先查出原来选中的题目
-	var existProblemIDs []uint
-	err := s.db.Select("problem_id").
-		Model(&models.KnowledgePointProblems{}).
+func (s *ProblemService) SetKnowledgePointTags(knowledgePointID uint, tagIDs []uint) (map[string]interface{}, error) {
+	// 先查出原来选中的标签
+	var existTagIDs []uint
+	err := s.db.Select("tag_id").
+		Model(&models.KnowledgePointTag{}).
 		Where("knowledge_point_id = ?", knowledgePointID).
-		Scan(&existProblemIDs).
+		Scan(&existTagIDs).
 		Error
 	if err != nil {
 		return nil, err
 	}
 
 	// 存到map里提高查询效率
-	existProblemIDMap := make(map[uint]int)
-	for _, problemID := range existProblemIDs {
-		existProblemIDMap[problemID] = 1
+	existTagIDMap := make(map[uint]int)
+	for _, tagID := range existTagIDs {
+		existTagIDMap[tagID] = 1
 	}
-	newProblemIDMap := make(map[uint]int)
-	for _, id := range problemIDs {
-		newProblemIDMap[id] = 1
+	newTagIDMap := make(map[uint]int)
+	for _, id := range tagIDs {
+		newTagIDMap[id] = 1
 	}
 
 	// 考虑三种情况:
@@ -143,16 +152,16 @@ func (s *ProblemService) SetKnowledgePointProblems(knowledgePointID uint, proble
 	createList := make([]uint, 0)
 	deleteList := make([]uint, 0)
 
-	// 找出需要新增的题目
-	for _, id := range problemIDs {
-		if _, exist := existProblemIDMap[id]; !exist {
+	// 找出需要新增的标签
+	for _, id := range tagIDs {
+		if _, exist := existTagIDMap[id]; !exist {
 			createList = append(createList, id)
 		}
 	}
 
-	// 找出需要删除的题目
-	for _, id := range existProblemIDs {
-		if _, exist := newProblemIDMap[id]; !exist {
+	// 找出需要删除的标签
+	for _, id := range existTagIDs {
+		if _, exist := newTagIDMap[id]; !exist {
 			deleteList = append(deleteList, id)
 		}
 	}
@@ -160,22 +169,22 @@ func (s *ProblemService) SetKnowledgePointProblems(knowledgePointID uint, proble
 	// 开事务处理创建和删除操作
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		if len(createList) > 0 {
-			knowledgePointProblems := make([]models.KnowledgePointProblems, 0, len(createList))
-			for _, problemID := range createList {
-				knowledgePointProblems = append(knowledgePointProblems, models.KnowledgePointProblems{
+			knowledgePointTags := make([]models.KnowledgePointTag, 0, len(createList))
+			for _, tagID := range createList {
+				knowledgePointTags = append(knowledgePointTags, models.KnowledgePointTag{
 					KnowledgePointID: knowledgePointID,
-					ProblemID:        problemID,
+					TagID:            tagID,
 				})
 			}
 
-			if err := tx.Create(&knowledgePointProblems).Error; err != nil {
+			if err := tx.Create(&knowledgePointTags).Error; err != nil {
 				return err
 			}
 		}
 
 		if len(deleteList) > 0 {
-			if err := tx.Where("knowledge_point_id = ? AND problem_id IN ?", knowledgePointID, deleteList).
-				Delete(&models.KnowledgePointProblems{}).Error; err != nil {
+			if err := tx.Where("knowledge_point_id = ? AND tag_id IN ?", knowledgePointID, deleteList).
+				Delete(&models.KnowledgePointTag{}).Error; err != nil {
 				return err
 			}
 		}
@@ -187,9 +196,9 @@ func (s *ProblemService) SetKnowledgePointProblems(knowledgePointID uint, proble
 		return nil, err
 	}
 
-	// 查询更新后的总题目数
+	// 查询更新后的总标签数
 	var totalCount int64
-	err = s.db.Model(&models.KnowledgePointProblems{}).
+	err = s.db.Model(&models.KnowledgePointTag{}).
 		Where("knowledge_point_id = ?", knowledgePointID).
 		Count(&totalCount).
 		Error
@@ -199,23 +208,31 @@ func (s *ProblemService) SetKnowledgePointProblems(knowledgePointID uint, proble
 
 	return map[string]interface{}{
 		"knowledge_point_id": knowledgePointID,
-		"total_count":        int(totalCount),
+		"total_count":        totalCount,
 		"added_count":        len(createList),
 		"removed_count":      len(deleteList),
 	}, nil
 }
 
 func (s *ProblemService) GetKnowledgePointProblems(userID, knowledgePointID uint) ([]map[string]interface{}, error) {
-	// 查询该知识点下的所有题目ID
-	var problemIDs []uint
-	err := s.db.Model(&models.KnowledgePointProblems{}).
-		Select("problem_id").
+	// 查询该知识点下的所有标签ID
+	var tagIDs []uint
+	err := s.db.Model(&models.KnowledgePointTag{}).
+		Select("tag_id").
 		Where("knowledge_point_id = ?", knowledgePointID).
-		Find(&problemIDs).
+		Find(&tagIDs).
 		Error
 	if err != nil {
 		return nil, err
 	}
+
+	// 根据标签ID查询题目ID
+	var problemIDs []uint
+	err = s.db.Model(&models.ProblemTag{}).
+		Select("problem_id").
+		Where("tag_id IN (?)", tagIDs).
+		Find(&problemIDs).
+		Error
 
 	// 根据ID查询具体信息
 	var problemInfos []map[string]interface{}

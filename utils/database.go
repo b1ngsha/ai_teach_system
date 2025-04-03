@@ -36,7 +36,7 @@ func InitDB() *gorm.DB {
 		&models.Class{},
 		&models.KnowledgePoint{},
 		&models.UserProblem{},
-		&models.KnowledgePointProblems{},
+		&models.KnowledgePointTag{},
 		&models.CourseClasses{},
 	)
 	if err != nil {

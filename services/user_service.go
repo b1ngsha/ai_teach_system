@@ -181,10 +181,23 @@ func (s *UserService) GetUserListByCourseAndClass(classID, courseID uint) ([]map
 		if err != nil {
 			return nil, err
 		}
-		// 再根据知识点和题目的关联关系查询出当前课程下的题目数量
-		var totalProblemCount int64
-		err = s.db.Model(&models.KnowledgePointProblems{}).
+
+		// 根据知识点-标签的关联关系查询出当前课程下的知识点关联的标签id
+		var tagIDs []uint
+		err = s.db.Model(&models.KnowledgePointTag{}).
+			Select("tag_id").
 			Where("knowledge_point_id IN (?)", courseKnowledgePointIDs).
+			Find(&tagIDs).
+			Error
+		if err != nil {
+			return nil, err
+		}
+
+		// 根据标签id查询关联的题目数量
+		var totalProblemCount int64
+		err = s.db.Model(&models.ProblemTag{}).
+			Select("DISTINCT problem_id").
+			Where("tag_id IN (?)", tagIDs).
 			Count(&totalProblemCount).
 			Error
 		if err != nil {
