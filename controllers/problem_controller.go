@@ -127,3 +127,13 @@ func (c *ProblemController) GetProblemList(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, utils.Success(problems))
 }
+
+func (c *ProblemController) GetAllTags(ctx *gin.Context) {
+	tags, err := c.service.GetAllTags()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取标签列表失败: %v", err)))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success(tags))
+}

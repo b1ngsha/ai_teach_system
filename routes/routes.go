@@ -133,6 +133,12 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		{
 			problems.GET("/:id/", problemController.GetProblemDetail)
 			problems.POST("/", problemController.GetProblemList)
+
+			// 标签相关路由
+			tags := problems.Group("/tags")
+			{
+				tags.GET("/", problemController.GetAllTags)
+			}
 		}
 
 		// 课程相关路由

@@ -2,6 +2,7 @@ package services
 
 import (
 	"ai_teach_system/models"
+	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -302,4 +303,12 @@ func (s *ProblemService) GetProblemList(difficulty string, tagID uint) ([]map[st
 	}
 
 	return problems, nil
+}
+
+func (s *ProblemService) GetAllTags() ([]models.Tag, error) {
+	var tags []models.Tag
+	if err := s.db.Order("name").Find(&tags).Error; err != nil {
+		return nil, fmt.Errorf("获取标签列表失败: %v", err)
+	}
+	return tags, nil
 }
