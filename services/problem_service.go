@@ -104,6 +104,7 @@ func (s *ProblemService) GetProblemDetail(problemID uint) (map[string]interface{
 		"content_cn":   problem.ContentCn,
 		"sample_cases": problem.SampleTestcases,
 		"tags":         problem.Tags,
+		"is_custom":    problem.IsCustom,
 	}
 
 	// 获取关联的知识点信息
