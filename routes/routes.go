@@ -92,6 +92,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 				{
 					// 获取知识点下的题目列表
 					problems.GET("/", problemController.GetKnowledgePointProblems)
+					// 设置知识点下的题目列表
+					problems.POST("/", problemController.SetKnowledgePointProblems)
 				}
 
 				// AI 相关路由

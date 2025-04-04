@@ -8,4 +8,5 @@ type KnowledgePoint struct {
 	CourseID uint   `json:"course_id" gorm:"not null"`
 	Course   Course `json:"-" gorm:"foreignKey:CourseID"`
 	Tags     []Tag  `json:"tags" gorm:"many2many:knowledge_point_tags;"`
+	Problems []Problem `json:"problems" gorm:"many2many:knowledge_point_problems;"`
 }

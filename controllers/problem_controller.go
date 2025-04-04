@@ -46,6 +46,10 @@ type CreateCustomProblemRequest struct {
 	MemoryLimit     int                      `json:"memory_limit" binding:"required"`
 }
 
+type SetKnowledgePointProblemsRequest struct {
+	ProblemIDs []uint `json:"problem_ids" binding:"required"`
+}
+
 func (c *ProblemController) GetCourseProblemList(ctx *gin.Context) {
 	courseID, err := strconv.ParseUint(ctx.Param("course_id"), 10, 32)
 	if err != nil {
@@ -107,6 +111,28 @@ func (c *ProblemController) SetKnowledgePointTags(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success(result))
 }
 
+func (c *ProblemController) SetKnowledgePointProblems(ctx *gin.Context) {
+	knowledgePointID, err := strconv.ParseUint(ctx.Param("knowledge_point_id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的知识点ID"))
+		return
+	}
+
+	var req SetKnowledgePointProblemsRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
+		return
+	}
+
+	result, err := c.service.SetKnowledgePointProblems(uint(knowledgePointID), req.ProblemIDs)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("设置知识点题目失败: %v", err)))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success(result))
+}
+
 func (c *ProblemController) GetKnowledgePointProblems(ctx *gin.Context) {
 	knowledgePointID, err := strconv.ParseUint(ctx.Param("knowledge_point_id"), 10, 32)
 	if err != nil {
@@ -114,12 +140,12 @@ func (c *ProblemController) GetKnowledgePointProblems(ctx *gin.Context) {
 		return
 	}
 
-	userID := ctx.GetUint("userID")
-	problems, err := c.service.GetKnowledgePointProblems(userID, uint(knowledgePointID))
+	problems, err := c.service.GetKnowledgePointProblems(uint(knowledgePointID))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取知识点题目失败: %v", err)))
 		return
 	}
+
 	ctx.JSON(http.StatusOK, utils.Success(problems))
 }
 

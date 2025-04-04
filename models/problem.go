@@ -20,7 +20,7 @@ type Problem struct {
 	SampleTestcases string            `json:"sample_testcases" gorm:"type:text"`
 	Tags            []Tag             `json:"tags" gorm:"many2many:problem_tags;"`
 	Users           []User            `json:"-" gorm:"many2many:user_problems;"`
-	KnowledgePoints []KnowledgePoint  `json:"knowledge_points" gorm:"many2many:problem_knowledge_points;"`
+	KnowledgePoints []KnowledgePoint  `json:"knowledge_points" gorm:"many2many:knowledge_point_problems;"`
 	IsCustom        bool              `json:"is_custom" gorm:"default:false"`
 	TestCases       string            `json:"test_cases" gorm:"type:text"`
 	TimeLimit       int               `json:"time_limit" gorm:"type:int;default:1000"`
