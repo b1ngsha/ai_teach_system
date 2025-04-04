@@ -71,6 +71,9 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			// 获取课程详情
 			courses.GET("/:course_id/", courseController.GetCourseDetail)
 
+			// 获取课程下的班级统计数据
+			courses.GET("/:course_id/stats/", courseController.GetCourseClassStats)
+
 			// 知识点相关路由
 			knowledgePoints := courses.Group("/:course_id/knowledge_points")
 			{

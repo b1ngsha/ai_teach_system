@@ -339,3 +339,113 @@ func (s *CourseService) GetCourseClasses(courseID uint) ([]map[string]interface{
 	}
 	return classInfos, nil
 }
+
+func (s *CourseService) GetCourseClassStats(courseID uint) ([]map[string]interface{}, error) {
+	// 首先获取课程关联的所有知识点
+	var courseKnowledgePointIDs []uint
+	err := s.db.Select("id").
+		Model(&models.KnowledgePoint{}).
+		Where("course_id = ?", courseID).
+		Scan(&courseKnowledgePointIDs).Error
+	if err != nil {
+		return nil, fmt.Errorf("获取课程知识点失败: %v", err)
+	}
+
+	// 获取知识点关联的标签
+	var tagIDs []uint
+	err = s.db.Model(&models.KnowledgePointTag{}).
+		Select("tag_id").
+		Where("knowledge_point_id IN ?", courseKnowledgePointIDs).
+		Scan(&tagIDs).Error
+	if err != nil {
+		return nil, fmt.Errorf("获取知识点标签失败: %v", err)
+	}
+
+	// 获取标签关联的题目总数
+	var totalProblemCount int64
+	err = s.db.Model(&models.ProblemTag{}).
+		Select("DISTINCT problem_id").
+		Where("tag_id IN ?", tagIDs).
+		Count(&totalProblemCount).Error
+	if err != nil {
+		return nil, fmt.Errorf("获取题目总数失败: %v", err)
+	}
+
+	// 获取所有班级
+	var class_ids []uint
+	err = s.db.Model(&models.CourseClasses{}).Where("course_id = ?", courseID).Pluck("class_id", &class_ids).Error
+	if err != nil {
+		return nil, fmt.Errorf("获取班级列表失败: %v", err)
+	}
+
+	var classes []models.Class
+	err = s.db.Find(&classes, class_ids).Error
+	if err != nil {
+		return nil, fmt.Errorf("获取班级列表失败: %v", err)
+	}
+
+	// 计算每个班级的统计数据
+	result := make([]map[string]interface{}, 0)
+	for _, class := range classes {
+		// 获取班级内的所有学生
+		var userIDs []uint
+		err = s.db.Model(&models.User{}).
+			Select("id").
+			Where("class_id = ?", class.ID).
+			Scan(&userIDs).Error
+		if err != nil {
+			return nil, fmt.Errorf("获取班级学生失败: %v", err)
+		}
+
+		if len(userIDs) == 0 {
+			continue
+		}
+
+		// 统计班级内所有学生的作答情况
+		var totalSolved, totalWrong int64
+
+		// 统计正确题目数
+		err = s.db.Model(&models.UserProblem{}).
+			Where("user_id IN ? AND knowledge_point_id IN ? AND status = ?", userIDs, courseKnowledgePointIDs, models.ProblemStatusSolved).
+			Count(&totalSolved).Error
+		if err != nil {
+			return nil, fmt.Errorf("统计正确题目数失败: %v", err)
+		}
+
+		// 统计错误题目数
+		err = s.db.Model(&models.UserProblem{}).
+			Where("user_id IN ? AND knowledge_point_id IN ? AND status = ?", userIDs, courseKnowledgePointIDs, models.ProblemStatusFailed).
+			Count(&totalWrong).Error
+		if err != nil {
+			return nil, fmt.Errorf("统计错误题目数失败: %v", err)
+		}
+
+		// 计算平均正确率和平均进度
+		var avgCorrectRate, avgProgress float64
+		totalAttempts := totalSolved + totalWrong
+
+		if totalAttempts > 0 {
+			avgCorrectRate = float64(totalSolved) / float64(totalAttempts) * 100
+		}
+
+		if totalProblemCount > 0 {
+			// 平均进度 = (总解决题目数 / (学生人数 * 总题目数)) * 100
+			avgProgress = (float64(totalSolved) / (float64(len(userIDs)) * float64(totalProblemCount))) * 100
+		}
+
+		classStats := map[string]interface{}{
+			"class_id":         class.ID,
+			"class_name":       class.Name,
+			"student_count":    len(userIDs),
+			"avg_correct_rate": avgCorrectRate,
+			"avg_progress":     avgProgress,
+			"total_solved":     totalSolved,
+			"total_wrong":      totalWrong,
+			"total_problems":   totalProblemCount,
+		}
+
+		result = append(result, classStats)
+	}
+
+	return result, nil
+}

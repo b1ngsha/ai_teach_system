@@ -127,3 +127,19 @@ func (c *CourseController) GetCourseClasses(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, utils.Success(result))
 }
+
+func (c *CourseController) GetCourseClassStats(ctx *gin.Context) {
+	courseID, err := strconv.ParseUint(ctx.Param("course_id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的课程ID"))
+		return
+	}
+
+	stats, err := c.courseService.GetCourseClassStats(uint(courseID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("获取班级统计数据失败: %v", err)))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success(stats))
+}
