@@ -76,19 +76,17 @@ func (s *AIService) GenerateHint(title, content, sampleTestCases, modelType stri
 		model = "deepseek-chat"
 	}
 
-	prompt := fmt.Sprintf(`你是一个大学算法课的老师，现在有算法题具体信息如下：
+	prompt := fmt.Sprintf(`题目：%s
+	题目内容：%s
 
-题目：%s
-题目内容：%s
+	示例测试用例：
+	%v
 
-示例测试用例：
-%v
-
-请生成符合以下要求的作答提示文字：
-1. 这段提示需要具有引导作用，不要给出过于详细的作答思路描述，只需要给出大体的思考方向，例如使用某一种算法，引导出问题的解决思路即可
-2. 时空复杂度最优
-3. 可读性良好
-4. 务必使用中文描述`, title, content, sampleTestCases)
+	请直接给出解题思路，要求：
+	1. 只描述解题的具体步骤
+	2. 不要包含任何引导语、过渡语或语气词
+	3. 不要分析时空复杂度
+	4. 不要给出代码示例`, title, content, sampleTestCases)
 
 	completion, err := client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
