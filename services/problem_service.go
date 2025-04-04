@@ -312,3 +312,41 @@ func (s *ProblemService) GetAllTags() ([]models.Tag, error) {
 	}
 	return tags, nil
 }
+
+func (s *ProblemService) CreateCustomProblem(problem *models.Problem, tagIDs []uint) (*models.Problem, error) {
+	// 验证标签是否存在
+	var count int64
+	err := s.db.Model(&models.Tag{}).Where("id IN ?", tagIDs).Count(&count).Error
+	if err != nil {
+		return nil, fmt.Errorf("验证标签失败: %v", err)
+	}
+	if int(count) != len(tagIDs) {
+		return nil, fmt.Errorf("部分标签不存在")
+	}
+
+	// 开启事务
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. 创建题目
+		if err := tx.Create(problem).Error; err != nil {
+			return fmt.Errorf("创建题目失败: %v", err)
+		}
+
+		// 2. 创建题目与标签的关联
+		for _, tagID := range tagIDs {
+			if err := tx.Create(&models.ProblemTag{
+				ProblemID: problem.ID,
+				TagID:     tagID,
+			}).Error; err != nil {
+				return fmt.Errorf("创建题目标签关联失败: %v", err)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return problem, nil
+}

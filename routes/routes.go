@@ -136,7 +136,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		{
 			problems.GET("/:id/", problemController.GetProblemDetail)
 			problems.POST("/", problemController.GetProblemList)
-
+			problems.POST("/custom/", problemController.CreateCustomProblem)
 			// 标签相关路由
 			tags := problems.Group("/tags")
 			{

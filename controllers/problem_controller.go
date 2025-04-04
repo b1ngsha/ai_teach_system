@@ -35,6 +35,17 @@ type GetProblemListRequest struct {
 	TagID      uint   `json:"tag_id"`
 }
 
+type CreateCustomProblemRequest struct {
+	Title           string                   `json:"title" binding:"required"`
+	Content         string                   `json:"content" binding:"required"`
+	Difficulty      models.ProblemDifficulty `json:"difficulty" binding:"required"`
+	SampleTestcases string                   `json:"sample_testcases" binding:"required"`
+	TestCases       string                   `json:"test_cases" binding:"required"`
+	TagIDs          []uint                   `json:"tag_ids" binding:"required,min=1"`
+	TimeLimit       int                      `json:"time_limit" binding:"required"`
+	MemoryLimit     int                      `json:"memory_limit" binding:"required"`
+}
+
 func (c *ProblemController) GetCourseProblemList(ctx *gin.Context) {
 	courseID, err := strconv.ParseUint(ctx.Param("course_id"), 10, 32)
 	if err != nil {
@@ -136,4 +147,43 @@ func (c *ProblemController) GetAllTags(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, utils.Success(tags))
+}
+
+func (c *ProblemController) CreateCustomProblem(ctx *gin.Context) {
+	var req CreateCustomProblemRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.Error(err.Error()))
+		return
+	}
+
+	// 验证难度值是否合法
+	if req.Difficulty != models.ProblemDifficultyEasy &&
+		req.Difficulty != models.ProblemDifficultyMedium &&
+		req.Difficulty != models.ProblemDifficultyHard {
+		ctx.JSON(http.StatusBadRequest, utils.Error("无效的难度值"))
+		return
+	}
+
+	problem := &models.Problem{
+		TitleCn:         req.Title,
+		ContentCn:       req.Content,
+		Difficulty:      req.Difficulty,
+		SampleTestcases: req.SampleTestcases,
+		TestCases:       req.TestCases,
+		IsCustom:        true,
+		TimeLimit:       req.TimeLimit,
+		MemoryLimit:     req.MemoryLimit,
+	}
+
+	createdProblem, err := c.service.CreateCustomProblem(problem, req.TagIDs)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("创建题目失败: %v", err)))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success(map[string]interface{}{
+		"id":         createdProblem.ID,
+		"title":      createdProblem.TitleCn,
+		"difficulty": createdProblem.Difficulty,
+	}))
 }

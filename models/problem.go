@@ -10,7 +10,7 @@ const (
 
 type Problem struct {
 	ID              uint              `gorm:"primarykey"`
-	LeetcodeID      int               `json:"leetcode_id" gorm:"unique;not null"`
+	LeetcodeID      int               `json:"leetcode_id"`
 	Title           string            `json:"title" gorm:"type:varchar(255);not null"`
 	TitleCn         string            `json:"title_cn" gorm:"not null"`
 	TitleSlug       string            `json:"title_slug" gorm:"not null"`
