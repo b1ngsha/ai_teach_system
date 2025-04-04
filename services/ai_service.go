@@ -164,12 +164,14 @@ func (s *AIService) CorrectCode(recordID, problemID uint, language, typedCode st
 		return nil, fmt.Errorf("no response from Deepseek AI service")
 	}
 
-	err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Updates(map[string]interface{}{
-		"deepseek_corrected_code": completionDeepseek.Choices[0].Message.Content,
-		"qwen_corrected_code":     completionQwen.Choices[0].Message.Content,
-	}).Error
-	if err != nil {
-		return nil, fmt.Errorf("set corrected_code error: %v", err)
+	if recordID != 0 {
+		err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Updates(map[string]interface{}{
+			"deepseek_corrected_code": completionDeepseek.Choices[0].Message.Content,
+			"qwen_corrected_code":     completionQwen.Choices[0].Message.Content,
+		}).Error
+		if err != nil {
+			return nil, fmt.Errorf("set corrected_code error: %v", err)
+		}
 	}
 
 	return map[string]interface{}{
@@ -238,12 +240,14 @@ func (s *AIService) AnalyzeCode(recordID, problemID uint, language, typedCode st
 		return nil, fmt.Errorf("no response from Deepseek AI service")
 	}
 
-	err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Updates(map[string]interface{}{
-		"qwen_wrong_reason_and_analyze":     completionQwen.Choices[0].Message.Content,
-		"deepseek_wrong_reason_and_analyze": completionDeepseek.Choices[0].Message.Content,
-	}).Error
-	if err != nil {
-		return nil, fmt.Errorf("set wrong_reason_and_analyze error: %v", err)
+	if recordID != 0 {
+		err = s.db.Model(&models.UserProblem{}).Where("id = ?", recordID).Updates(map[string]interface{}{
+			"qwen_wrong_reason_and_analyze":     completionQwen.Choices[0].Message.Content,
+			"deepseek_wrong_reason_and_analyze": completionDeepseek.Choices[0].Message.Content,
+		}).Error
+		if err != nil {
+			return nil, fmt.Errorf("set wrong_reason_and_analyze error: %v", err)
+		}
 	}
 
 	return map[string]interface{}{
