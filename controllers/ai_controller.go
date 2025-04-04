@@ -52,6 +52,7 @@ type JudgeCodeRequest struct {
 	ProblemID uint   `json:"problem_id" binding:"required"`
 	Language  string `json:"language" binding:"required"`
 	Code      string `json:"code" binding:"required"`
+	Test      bool   `json:"test" binding:"required"`
 }
 
 func (c *AIController) GenerateHint(ctx *gin.Context) {
@@ -147,7 +148,7 @@ func (c *AIController) JudgeCode(ctx *gin.Context) {
 		return
 	}
 
-	result, err := c.Service.JudgeCode(req.ProblemID, req.Language, req.Code)
+	result, err := c.Service.JudgeCode(req.ProblemID, req.Language, req.Code, req.Test)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(fmt.Sprintf("判题失败: %v", err)))
 		return

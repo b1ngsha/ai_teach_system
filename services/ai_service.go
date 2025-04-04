@@ -20,12 +20,12 @@ type AIServiceInterface interface {
 	AnalyzeCode(recordID, problemID uint, lang, typedCode string) (map[string]interface{}, error)
 	Chat(problemID uint, typedCode, question, modelType string) (string, error)
 	SuggestKnowledgePointTags(knowledgePointID uint) ([]models.Tag, error)
-	JudgeCode(problemID uint, lang, code string) (map[string]interface{}, error)
+	JudgeCode(problemID uint, lang, code string, test bool) (map[string]interface{}, error)
 }
 
 // JudgeResult 定义判题结果的结构
 type JudgeResult struct {
-	Status      string  `json:"status"`      // Accepted, Wrong Answer, Time Limit Exceeded, etc.
+	Status      string  `json:"status"`      // SUCCESS, FAILED, Time Limit Exceeded, Memory Limit Exceeded, Runtime Error, etc.
 	TimeUsed    float64 `json:"time_used"`   // 运行时间(ms)
 	MemoryUsed  float64 `json:"memory_used"` // 内存使用(MB)
 	TestResults []struct {
@@ -390,10 +390,15 @@ func (s *AIService) SuggestKnowledgePointTags(knowledgePointID uint) ([]models.T
 	return selectedTags, nil
 }
 
-func (s *AIService) JudgeCode(problemID uint, lang, code string) (map[string]interface{}, error) {
+func (s *AIService) JudgeCode(problemID uint, lang, code string, test bool) (map[string]interface{}, error) {
 	var problem models.Problem
 	if err := s.db.First(&problem, problemID).Error; err != nil {
 		return nil, fmt.Errorf("题目不存在: %v", err)
+	}
+
+	testCases := problem.TestCases
+	if test {
+		testCases = problem.SampleTestcases
 	}
 
 	// 构建判题提示
@@ -437,7 +442,7 @@ func (s *AIService) JudgeCode(problemID uint, lang, code string) (map[string]int
 5. 对于每个测试用例，都要实际运行代码并比较结果`,
 		problem.Content,
 		code,
-		problem.TestCases,
+		testCases,
 		problem.TimeLimit,
 		problem.MemoryLimit,
 		lang,
