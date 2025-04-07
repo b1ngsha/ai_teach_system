@@ -8,7 +8,15 @@ import (
 	"gorm.io/gorm"
 )
 
+func healthCheckHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"status": "ok",
+	})
+}
+
 func SetupRoutes(r *gin.Engine, db *gorm.DB) {
+	r.GET("/healthz", healthCheckHandler)
+
 	r.Use(CORSMiddleware())
 
 	api := r.Group("/api")

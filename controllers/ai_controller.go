@@ -28,14 +28,14 @@ type GenerateCodeRequest struct {
 }
 
 type CorrectCodeRequest struct {
-	RecordID  uint   `json:"record_id" binding:"required"`
+	RecordID  uint   `json:"record_id"`
 	ProblemID uint   `json:"problem_id" binding:"required"`
 	Language  string `json:"language" binding:"required"`
 	TypedCode string `json:"typed_code" binding:"required"`
 }
 
 type AnalyzeCodeRequest struct {
-	RecordID  uint   `json:"record_id" binding:"required"`
+	RecordID  uint   `json:"record_id"`
 	ProblemID uint   `json:"problem_id" binding:"required"`
 	Language  string `json:"language" binding:"required"`
 	TypedCode string `json:"typed_code" binding:"required"`
